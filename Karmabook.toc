@@ -1,7 +1,7 @@
 ## Interface: 16001
 ## Title: |cffffd100Karmabook|r
 ## Notes: Private notes on players. Alerts you with your note when they talk or show up.
-## Author: Relyk
+## Author: Relyk Rageroot
 ## Version: 0.1.0
 ## SavedVariables: KarmabookDB
 ## IconTexture: Interface\AddOns\Karmabook\Media\Icon
