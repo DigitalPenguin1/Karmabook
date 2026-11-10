@@ -64,8 +64,9 @@ local HELP_TEXT = table.concat({
     HelpSection("Dividers",
         "The tabs on the right show one label at a time."),
     HelpSection("Sharing",
-        "Share with guild sends a page's newest note to guildmates who are online and have Karmabook. "
-        .. "Pages they share wait in the Guild tab and never alert you until you add them to your book."),
+        "Share on a page sends its newest note. Guild sends it quietly to guildmates who are online and have "
+        .. "Karmabook. Pages they share wait in the Guild tab and never alert you until you add them to your book. "
+        .. "Say posts it in plain chat, where anyone nearby can read it, including the player it's about."),
     HelpSection("Notes",
         "Plain notes that aren't about a player. They save when you leave the page, and never alert or get shared."),
     HelpSection("Commands",
@@ -319,16 +320,32 @@ local function CreateRightPage(frame)
     details.seen:SetWidth(PAGE_WIDTH)
     details.seen:SetJustifyH("LEFT")
 
-    details.share = Theme.CreateButton(details, "", 120, function()
+    -- Guild goes only to guildmates with Karmabook. Say is plain chat that
+    -- anyone nearby can read, the player you wrote about included.
+    details.share = Theme.CreateButton(details, "Share", 120, function(self)
         local record = frame.record
-        if record.shared then
-            local unshared, reason = GB.Share:Unshare(record)
-            if not unshared then
-                GB:Print(GB.COLORS.ERROR .. reason .. "|r")
+        MenuUtil.CreateContextMenu(self, function(_, root)
+            if record.shared then
+                root:CreateButton("Unshare from guild", function()
+                    local unshared, reason = GB.Share:Unshare(record)
+                    if not unshared then
+                        GB:Print(GB.COLORS.ERROR .. reason .. "|r")
+                    end
+                end)
+            else
+                root:CreateButton("Guild (Karmabook users)", function()
+                    StaticPopup_Show("KARMABOOK_SHARE", record.name, nil, record)
+                end)
             end
-        else
-            StaticPopup_Show("KARMABOOK_SHARE", record.name, nil, record)
-        end
+            root:CreateButton("Say (everyone nearby)", function()
+                local line = GB.Share:SayLine(record)
+                if line then
+                    StaticPopup_Show("KARMABOOK_SAY", line, nil, record)
+                else
+                    GB:Print(GB.COLORS.ERROR .. "Write a note on this page first.|r")
+                end
+            end)
+        end)
     end)
     details.share:SetPoint("TOPRIGHT", 0, -22)
 
@@ -652,7 +669,6 @@ local function RefreshRightPage(frame)
 
     GB:LearnIdentity(record, record.guid)
     details.name:SetText(record.name)
-    details.share:SetText(record.shared and "Unshare" or "Share with guild")
     details.identity:SetText(GB.FormatIdentity(record) or (FADED .. "Race and class not seen yet|r"))
     details.seen:SetText(GB.FormatSeen(record))
     details.label:SetText(GB.FormatLabelInk(record))
@@ -819,6 +835,21 @@ StaticPopupDialogs.KARMABOOK_DELETE_MISC = {
     OnAccept = function(_, note)
         CloseMisc(Window.frame)
         GB:DeleteMiscNote(note)
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+}
+
+StaticPopupDialogs.KARMABOOK_SAY = {
+    text = "Say this out loud? Everyone nearby will see it, including them.\n\n%s",
+    button1 = ACCEPT,
+    button2 = CANCEL,
+    OnAccept = function(_, record)
+        local said, reason = GB.Share:SayPage(record)
+        if not said then
+            GB:Print(GB.COLORS.ERROR .. reason .. "|r")
+        end
     end,
     timeout = 0,
     whileDead = true,

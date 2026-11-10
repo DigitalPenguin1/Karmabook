@@ -1,6 +1,6 @@
--- Karmabook - Sharing with the guild
--- Nothing goes out unless you press Share with guild on a page, and only that
--- page's newest note is sent. What arrives waits in the Guild tab and can't
+-- Karmabook - Sharing with the guild, or out loud in Say
+-- Nothing goes out unless you pick Share on a page, and only that page's
+-- newest note is sent. What arrives waits in the Guild tab and can't
 -- raise an alert until you add it to your own book.
 --
 -- Everything received was typed by another player, so every field is cleaned
@@ -28,8 +28,12 @@ local SHARE_COOLDOWN = 60
 -- Seconds to wait for the rest of a page that arrived in pieces
 local ASSEMBLY_TIMEOUT = 30
 
+-- The game's limit on one chat line
+local SAY_MAX = 255
+
 local partial = {}
 local lastShared = {}
+local lastSaid = {}
 local nextMessageID = 0
 
 ----------------------------------------------------------------------
@@ -121,6 +125,42 @@ function Share:SharePage(record)
     lastShared[record.name] = now
     record.shared = true
     GB:Refresh()
+    return true
+end
+
+-- The line Say would post: name, race and class if known, and the newest note
+function Share:SayLine(record)
+    local latest = GB.LatestNote(record)
+    if not latest then
+        return nil
+    end
+    local who = record.name
+    local identity = GB.FormatIdentity(record)
+    if identity then
+        who = who .. " (" .. identity .. ")"
+    end
+    local line = who .. ": " .. latest.text:gsub("%s+", " ")
+    if #line > SAY_MAX then
+        line = GB.CleanText(line, SAY_MAX - 3) .. "..."
+    end
+    return line
+end
+
+-- Says the page out loud, for everyone nearby to read. Returns true, or false
+-- and a reason to show the player.
+function Share:SayPage(record)
+    local line = self:SayLine(record)
+    if not line then
+        return false, "Write a note on this page first."
+    end
+    local now = GetTime()
+    if lastSaid[record.name] and now - lastSaid[record.name] < SHARE_COOLDOWN then
+        return false, "You just said this page. Give it a minute."
+    end
+    if not pcall(SendChatMessage, line, "SAY") then
+        return false, "The game wouldn't let the addon talk here."
+    end
+    lastSaid[record.name] = now
     return true
 end
 

@@ -11,7 +11,7 @@ First version, for WoW: Forever.
 - Right-click "Add to Karmabook" on names in chat and on portraits
 - Grudge, Kill on Sight, Caution, and Good Player labels
 - Divider tabs for All, Grudges, Kill on Sight, Caution, Good, and Guild
-- Share with guild sends a page's newest note to online guildmates with the addon; shared pages wait in the Guild tab and can't alert until you add them
+- Share sends a page's newest note: Guild goes quietly to online guildmates with the addon, where it waits in the Guild tab and can't alert until they add it; Say posts it in chat for everyone nearby
 - Editable location on the add and edit forms
 - Notes tab for plain notes that aren't about a player
 - Heart icon for the minimap button and addon list

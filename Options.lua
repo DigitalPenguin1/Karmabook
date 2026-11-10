@@ -132,7 +132,7 @@ function Options:RegisterAbout(category)
     local about = AddText(frame, thanks,
         "A private notebook on the players you meet in WoW: Forever. Write down what someone did, and the next " ..
         "time they talk in chat or show up nearby, you get an alert with your note. Nothing is sent to anyone unless " ..
-        "you press Share with guild. " ..
+        "you pick Share on a page. " ..
         "Type /karmabook help in chat for every command.", "GameFontHighlight", 8)
 
     local support = AddText(frame, about, "If you enjoy this addon and want to support development:", "GameFontNormal", 20)

@@ -6,7 +6,7 @@
 
 Private notes on players for WoW: Forever. Add someone once, and the next time they talk in guild chat, whisper you, or walk past, you get a sound and a banner with your note on what they did.
 
-Nothing is sent to anyone unless you press **Share with guild** on a page. The addon never messages players, and only lists people you add yourself. The Notes tab holds plain notes that aren't about anyone.
+Nothing is sent to anyone unless you pick **Share** on a page: **Guild** sends it quietly to guildmates who have Karmabook, and **Say** posts it in chat for everyone nearby. It never whispers anyone, and only lists people you add yourself. The Notes tab holds plain notes that aren't about anyone.
 
 ## Adding someone
 

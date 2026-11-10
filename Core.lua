@@ -1,6 +1,6 @@
 -- Karmabook - Core
 -- Saved data, name matching, and the slash command. Nothing is sent to other
--- players unless you press Share with guild, and nobody gets on your list
+-- players unless you pick Share on a page, and nobody gets on your list
 -- unless you add them.
 
 Karmabook = {}
