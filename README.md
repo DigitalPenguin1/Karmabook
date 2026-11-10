@@ -50,4 +50,4 @@ Copy the `Karmabook` folder into `World of Warcraft/_forever_/Interface/AddOns/`
 
 Found a bug or have an idea? [Open an issue](https://github.com/DigitalPenguin1/Karmabook/issues). If you enjoy Karmabook, you can [buy me a coffee](https://buymeacoffee.com/relyk22).
 
-Made by Relyk.
+Made by Relyk Rageroot.

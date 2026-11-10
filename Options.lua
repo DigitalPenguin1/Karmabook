@@ -143,7 +143,7 @@ function Options:RegisterAbout(category)
     title:SetTextColor(Theme.Color(Theme.GOLD_LIGHT))
 
     local version = AddText(frame, title, "Version: |cffffd100" .. GB.VERSION .. "|r", "GameFontHighlight", 12)
-    local author = AddText(frame, version, "Developed by: |cff00ccffRelyk|r", "GameFontHighlight", 4)
+    local author = AddText(frame, version, "Developed by: |cff00ccffRelyk Rageroot|r", "GameFontHighlight", 4)
 
     local thanks = AddText(frame, author, "Thank you for using Karmabook!", "GameFontNormalLarge", 20)
     local about = AddText(frame, thanks,
