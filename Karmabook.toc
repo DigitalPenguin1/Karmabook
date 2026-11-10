@@ -15,6 +15,7 @@ Alerts.lua
 Watch.lua
 Hooks.lua
 Share.lua
+SyncLog.lua
 Dialog.lua
 Window.lua
 Minimap.lua

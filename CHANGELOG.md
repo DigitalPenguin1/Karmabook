@@ -13,5 +13,9 @@ First version, for WoW: Forever.
 - Divider tabs for All, Grudges, Kill on Sight, Caution, Good, and Guild
 - Share sends a page's newest note: Guild goes quietly to online guildmates with the addon, where it waits in the Guild tab and can't alert until they add it; Say posts it in chat for everyone nearby
 - Editable location on the add and edit forms
+- Back button on the Help page that returns to your page without closing the book
+- About button at the top of the settings page
+- "Share with guild" checkbox on the add and edit form, off each time it opens
+- Sync page in settings (or `/karmabook sync`) listing every page shared, received, added, dismissed, or ignored and why. Check guild shows which online guildmates have Karmabook
 - Notes tab for plain notes that aren't about a player
 - Heart icon for the minimap button and addon list

@@ -38,6 +38,8 @@ local DEFAULTS = {
     -- Pages guildmates shared, waiting in the Guild tab
     shared = {},
     receiveShared = true,
+    -- Guild sharing history for the Sync page in settings
+    syncLog = {},
     -- Plain notes in the Notes tab, not about any player
     misc = {},
     alerts = true,
@@ -617,6 +619,7 @@ local function PrintHelp()
     print("  /karmabook add First Surname: note")
     print("  /karmabook find First Surname")
     print("  /karmabook options")
+    print("  /karmabook sync: see what guild sharing sent and received")
     print("  /karmabook status: show whether chat is hidden from addons right now")
     print("  /karmabook debug: print the raw name of every chat sender (for testing)")
 end
@@ -658,6 +661,8 @@ local function OnSlash(input)
         end
     elseif command == "options" then
         GB.Options:Open()
+    elseif command == "sync" then
+        GB.Options:OpenSync()
     elseif command == "status" then
         PrintStatus()
     elseif command == "debug" then

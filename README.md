@@ -23,6 +23,7 @@ Nothing is sent to anyone unless you pick **Share** on a page: **Guild** sends i
 | `/karmabook add First Surname: note` | Add a player or a new note |
 | `/karmabook find First Surname` | Print a player's notes |
 | `/karmabook options` | Open settings |
+| `/karmabook sync` | Open the Sync log: everything shared and received, and who in your guild has Karmabook |
 | `/karmabook status` | Show whether chat is hidden from addons right now |
 | `/karmabook debug` | Print each chat sender's raw name, for testing |
 

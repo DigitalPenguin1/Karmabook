@@ -15,6 +15,13 @@ local function AddCheckbox(category, id, name, tooltip, getValue, setValue)
     Settings.CreateCheckbox(category, setting, tooltip)
 end
 
+-- A row with a label on the left and a button on the right
+local function AddButton(layout, label, buttonText, tooltip, onClick)
+    if CreateSettingsButtonInitializer then
+        layout:AddInitializer(CreateSettingsButtonInitializer(label, buttonText, onClick, tooltip, true))
+    end
+end
+
 local function AddDBCheckbox(category, key, name, tooltip)
     AddCheckbox(category, key, name, tooltip,
         function() return GB.db[key] end,
@@ -32,6 +39,10 @@ function Options:Register()
         return
     end
     local category, layout = Settings.RegisterVerticalLayoutCategory("Karmabook")
+
+    AddButton(layout, "Karmabook " .. GB.VERSION, "About",
+        "Who made Karmabook, how to support it, and where to report bugs.",
+        function() Options:OpenAbout() end)
 
     AddHeader(layout, "Alerts")
     AddDBCheckbox(category, "alerts", "Enable alerts", "Master switch for every alert.")
@@ -56,6 +67,9 @@ function Options:Register()
     AddHeader(layout, "Guild sharing")
     AddDBCheckbox(category, "receiveShared", "Receive shared pages",
         "Collect pages guildmates share in the Guild tab. They never alert you until you add them to your book.")
+    AddButton(layout, "Sharing history", "Sync log",
+        "See every page you shared or got, anything ignored, and which guildmates have Karmabook.",
+        function() Options:OpenSync() end)
 
     AddHeader(layout, "Display")
     AddDBCheckbox(category, "tooltip", "Show notes in tooltips", "Add your latest note to a listed player's tooltip.")
@@ -67,6 +81,9 @@ function Options:Register()
     Settings.RegisterAddOnCategory(category)
     self.category = category
     self:RegisterAbout(category)
+    if Settings.RegisterCanvasLayoutSubcategory then
+        self.syncCategory = Settings.RegisterCanvasLayoutSubcategory(category, GB.SyncLog:CreatePage(), "Sync")
+    end
 end
 
 ----------------------------------------------------------------------
@@ -170,4 +187,8 @@ end
 
 function Options:OpenAbout()
     OpenTo(self.aboutCategory or self.category)
+end
+
+function Options:OpenSync()
+    OpenTo(self.syncCategory or self.category)
 end

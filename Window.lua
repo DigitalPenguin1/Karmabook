@@ -66,12 +66,14 @@ local HELP_TEXT = table.concat({
     HelpSection("Sharing",
         "Share on a page sends its newest note. Guild sends it quietly to guildmates who are online and have "
         .. "Karmabook. Pages they share wait in the Guild tab and never alert you until you add them to your book. "
-        .. "Say posts it in plain chat, where anyone nearby can read it, including the player it's about."),
+        .. "Say posts it in plain chat, where anyone nearby can read it, including the player it's about. "
+        .. "/karmabook sync shows everything shared and received, and who in your guild has Karmabook."),
     HelpSection("Notes",
         "Plain notes that aren't about a player. They save when you leave the page, and never alert or get shared."),
     HelpSection("Commands",
         "/karmabook - open the notebook\n"
         .. "/karmabook add - add your target\n"
+        .. "/karmabook sync - sharing history\n"
         .. "/karmabook add First Surname: note\n"
         .. "/karmabook find First Surname\n"
         .. "/karmabook options - open settings\n"
@@ -532,6 +534,13 @@ local function CreateHelpPage(frame)
     title:SetPoint("TOPLEFT")
     title:SetText("Help")
 
+    -- The X closes the whole book; this only leaves Help
+    local back = Theme.CreateButton(help, "< Back", 60, function()
+        Window:CloseHelp()
+    end)
+    back:SetPoint("TOPRIGHT", -26, 2)
+    help.back = back
+
     local scroll, content = CreatePageScroll(help)
     scroll:SetPoint("TOPLEFT", 0, HELP_TOP)
     scroll:SetPoint("BOTTOMRIGHT", -22, HELP_BOTTOM)
@@ -808,6 +817,12 @@ function Window:ToggleHelp()
     self:Show()
     CommitMisc(self.frame)
     self.frame.showHelp = not self.frame.showHelp
+    self:Refresh()
+end
+
+function Window:CloseHelp()
+    if not self.frame or not self.frame.showHelp then return end
+    self.frame.showHelp = false
     self:Refresh()
 end
 

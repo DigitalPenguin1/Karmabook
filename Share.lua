@@ -31,10 +31,21 @@ local ASSEMBLY_TIMEOUT = 30
 -- The game's limit on one chat line
 local SAY_MAX = 255
 
+-- Seconds between answers to "who has Karmabook?"
+local ANSWER_COOLDOWN = 30
+local VERSION_MAX = 16
+
 local partial = {}
 local lastShared = {}
 local lastSaid = {}
 local nextMessageID = 0
+local lastAnswered
+local ignoredFrom = {}
+
+local function Log(text)
+    GB.SyncLog:Add(text)
+end
+local Who = function(name) return GB.SyncLog.Who(name) end
 
 ----------------------------------------------------------------------
 -- Sending
@@ -90,7 +101,7 @@ local function IsGuildmate(name)
 end
 
 -- Returns true, or false and a reason to show the player
-function Share:SharePage(record)
+local function SharePage(record)
     if not IsInGuild() then
         return false, "You aren't in a guild."
     end
@@ -124,8 +135,19 @@ function Share:SharePage(record)
     end
     lastShared[record.name] = now
     record.shared = true
+    GB.db.lastShareSent = time()
     GB:Refresh()
     return true
+end
+
+function Share:SharePage(record)
+    local shared, reason = SharePage(record)
+    if shared then
+        Log("Shared your page on " .. Who(record.name) .. " with the guild")
+    else
+        Log("Didn't share " .. Who(record.name) .. ": " .. reason)
+    end
+    return shared, reason
 end
 
 -- The line Say would post: name, race and class if known, and the newest note
@@ -164,11 +186,21 @@ function Share:SayPage(record)
     return true
 end
 
+-- Asks online guildmates with Karmabook to say so
+function Share:SendHello()
+    if not IsInGuild() then
+        return false, "You aren't in a guild."
+    end
+    return SendGuild(table.concat({ PROTOCOL, "H" }, SEP))
+end
+
 function Share:Unshare(record)
     local sent, reason = SendGuild(table.concat({ PROTOCOL, "U", Field(record.name) }, SEP))
     if not sent then
+        Log("Couldn't unshare " .. Who(record.name) .. ": " .. reason)
         return false, reason
     end
+    Log("Unshared your page on " .. Who(record.name))
     record.shared = nil
     GB:Refresh()
     return true
@@ -229,7 +261,12 @@ local function OnPage(sender, payload)
     local fields = SplitFields(payload)
     local name = GB.NormalizeName(fields[1])
     local text = GB.CleanText(fields[7], GB.NOTE_MAX)
-    if not name or text == "" or GB:IsSelf(name) then
+    if not name or text == "" then
+        Log("Ignored a page from " .. Who(sender) .. " that couldn't be read")
+        return
+    end
+    -- Pages about you are dropped without a word, the same as before
+    if GB:IsSelf(name) then
         return
     end
 
@@ -239,6 +276,7 @@ local function OnPage(sender, payload)
         stamp = time()
     end
     if AlreadyInBook(name, sender, stamp) then
+        Log(Who(sender) .. " shared " .. Who(name) .. " again. That note is already in your book.")
         return
     end
 
@@ -260,6 +298,8 @@ local function OnPage(sender, payload)
         } },
     }
     TrimStored()
+    GB.db.lastShareReceived = time()
+    Log((isNew and "Got a page on " or "Got an updated page on ") .. Who(name) .. " from " .. Who(sender))
     if isNew then
         GB:Print(sender .. " shared a page on " .. name .. ". It's in the Guild tab of /karmabook.")
     end
@@ -277,13 +317,14 @@ local function OnPart(sender, id, part, total, chunk)
     for key, pending in pairs(partial) do
         if now - pending.started > ASSEMBLY_TIMEOUT then
             partial[key] = nil
+            Log("A page from " .. Who(pending.sender) .. " arrived in pieces and some never came, so it was dropped")
         end
     end
 
     local key = sender .. ":" .. id
     local pending = partial[key]
     if not pending or pending.total ~= total then
-        pending = { total = total, parts = {}, count = 0, started = now }
+        pending = { total = total, parts = {}, count = 0, started = now, sender = sender }
         partial[key] = pending
     end
     if not pending.parts[part] then
@@ -303,17 +344,50 @@ local function OnUnshare(sender, nameField)
     local name = GB.NormalizeName(nameField)
     if name and GB.db.shared[EntryKey(name, sender)] then
         GB.db.shared[EntryKey(name, sender)] = nil
+        Log(Who(sender) .. " took back their page on " .. Who(name))
         GB:Refresh()
     end
 end
 
+local function Answer()
+    local now = GetTime()
+    if lastAnswered and now - lastAnswered < ANSWER_COOLDOWN then
+        return
+    end
+    lastAnswered = now
+    -- A short random wait so a whole guild doesn't answer in the same instant
+    C_Timer.After(math.random() * 3, function()
+        SendGuild(table.concat({ PROTOCOL, "V", Field(GB.VERSION), GB.db.receiveShared and "on" or "off" }, SEP))
+    end)
+end
+
 function Share:OnAddonMessage(prefix, text, channel, sender)
-    if prefix ~= PREFIX or channel ~= "GUILD" or not GB.db.receiveShared then
+    if prefix ~= PREFIX or channel ~= "GUILD" then
         return
     end
     text, sender = Readable(text), Readable(sender)
     sender = sender and GB.NormalizeName(sender)
     if not text or not sender or GB:IsSelf(sender) then
+        return
+    end
+
+    if text == PROTOCOL .. "~H" then
+        Answer()
+        return
+    end
+    local version, receiving = text:match("^" .. PROTOCOL .. "~V~([^~]*)~(%a+)$")
+    if version then
+        version = GB.CleanText(version, VERSION_MAX)
+        GB.SyncLog:OnAnswer(sender, version ~= "" and version or "?", receiving == "on")
+        return
+    end
+
+    if not GB.db.receiveShared then
+        -- One line per guildmate per session, not one per message
+        if text:match("^" .. PROTOCOL .. "~P~") and not ignoredFrom[sender] then
+            ignoredFrom[sender] = true
+            Log("Ignored a page from " .. Who(sender) .. " because Receive shared pages is off")
+        end
         return
     end
 
@@ -360,6 +434,7 @@ end
 
 function Share:Dismiss(entry)
     GB.db.shared[entry.key] = nil
+    Log("Dismissed " .. Who(entry.from) .. "'s page on " .. Who(entry.name))
     GB:Refresh()
 end
 
@@ -375,6 +450,7 @@ function Share:AddToBook(entry)
     record.race = record.race or entry.race
     record.class = record.class or entry.class
     GB.db.shared[entry.key] = nil
+    Log("Added " .. Who(entry.from) .. "'s page on " .. Who(entry.name) .. " to your book")
     GB:Refresh()
     return record
 end

@@ -38,6 +38,19 @@ local function ApplyIdentity(frame, record)
     end
 end
 
+-- Ticking the box does what Share > Guild on the page would, right after saving
+local function ShareIfTicked(frame, record)
+    if not (frame.shareCheck:IsShown() and frame.shareCheck:GetChecked()) then
+        return
+    end
+    local shared, reason = GB.Share:SharePage(record)
+    if shared then
+        GB:Print("Shared " .. record.name .. " with your guild.")
+    else
+        GB:Print(GB.COLORS.ERROR .. "Saved, but not shared: " .. reason .. "|r")
+    end
+end
+
 local function SaveEdit(frame)
     local record = frame.editing
     local renamed, reason = GB:RenamePlayer(record, frame.nameInput:GetText())
@@ -49,6 +62,7 @@ local function SaveEdit(frame)
     ApplyIdentity(frame, record)
     GB:SetLatestNote(record, frame.noteInput:GetText(), frame.whereInput:GetText())
     GB:Print("Updated " .. record.name .. ".")
+    ShareIfTicked(frame, record)
     frame:Hide()
     GB.Window:Select(record)
 end
@@ -66,6 +80,7 @@ local function Save(frame)
     end
     ApplyIdentity(frame, record)
     GB:Print("Saved " .. record.name .. ".")
+    ShareIfTicked(frame, record)
     frame:Hide()
     GB.Window:Select(record)
 end
@@ -155,6 +170,27 @@ local function GetFrame()
     end)
     cancel:SetPoint("RIGHT", save, "LEFT", -8, 0)
 
+    -- Off every time the form opens, so nothing is shared by habit
+    local shareCheck = CreateFrame("CheckButton", nil, frame, "UICheckButtonTemplate")
+    shareCheck:SetSize(24, 24)
+    shareCheck:SetPoint("BOTTOMLEFT", 22, 16)
+    local shareLabel = shareCheck:CreateFontString(nil, "OVERLAY")
+    shareLabel:SetFontObject(Theme.FONT_BODY)
+    shareLabel:SetPoint("LEFT", shareCheck, "RIGHT", 2, 0)
+    shareLabel:SetText("Share with guild")
+    shareCheck.label = shareLabel
+    shareCheck:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText("Share with guild")
+        GameTooltip:AddLine("After saving, send this note to online guildmates who have Karmabook. "
+            .. "It waits in their Guild tab until they add it.", 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    shareCheck:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
+    frame.shareCheck = shareCheck
+
     Dialog.frame = frame
     return frame
 end
@@ -171,6 +207,7 @@ function Dialog:Open(name, guid)
     frame.whereInput:SetText(GB:CurrentZone() or "")
     FillIdentity(frame, record)
     UpdateLabelButton(frame)
+    Dialog:ResetShare(frame)
     frame:Show()
     if name then
         frame.noteInput:SetFocus()
@@ -197,8 +234,14 @@ function Dialog:OpenEdit(record)
     end
     FillIdentity(frame, record)
     UpdateLabelButton(frame)
+    Dialog:ResetShare(frame)
     frame:Show()
     frame.noteInput:SetFocus()
+end
+
+function Dialog:ResetShare(frame)
+    frame.shareCheck:SetChecked(false)
+    frame.shareCheck:SetShown(IsInGuild() and true or false)
 end
 
 function Dialog:OpenForTarget()
