@@ -1,5 +1,9 @@
 # Karmabook
 
+<p align="center">
+  <img src="Art/description-banner.webp" alt="Karmabook: I Will Always Remember You" width="640">
+</p>
+
 Private notes on players for WoW: Forever. Add someone once, and the next time they talk in guild chat, whisper you, or walk past, you get a sound and a banner with your note on what they did.
 
 Nothing is sent to anyone unless you press **Share with guild** on a page. The addon never messages players, and only lists people you add yourself. The Notes tab holds plain notes that aren't about anyone.
@@ -14,7 +18,7 @@ Nothing is sent to anyone unless you press **Share with guild** on a page. The a
 
 | Command | What it does |
 |---|---|
-| `/karmabook` | Open your notebook |
+| `/karmabook` or `/kbook` | Open your notebook |
 | `/karmabook add` | Add your target, or type a name in the form |
 | `/karmabook add First Surname: note` | Add a player or a new note |
 | `/karmabook find First Surname` | Print a player's notes |
