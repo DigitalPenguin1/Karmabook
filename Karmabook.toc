@@ -1,0 +1,22 @@
+## Interface: 16001
+## Title: |cffffd100Karmabook|r
+## Notes: Private notes on players. Alerts you with your note when they talk or show up.
+## Author: Relyk
+## Version: 0.1.0
+## SavedVariables: KarmabookDB
+## IconTexture: Interface\AddOns\Karmabook\Media\Icon
+## AddonCompartmentFunc: Karmabook_OnAddonCompartmentClick
+## AddonCompartmentFuncOnEnter: Karmabook_OnAddonCompartmentEnter
+## AddonCompartmentFuncOnLeave: Karmabook_OnAddonCompartmentLeave
+
+Core.lua
+Theme.lua
+Alerts.lua
+Watch.lua
+Hooks.lua
+Share.lua
+Dialog.lua
+Window.lua
+Minimap.lua
+Options.lua
+Init.lua

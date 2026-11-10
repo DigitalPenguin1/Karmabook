@@ -1,0 +1,13 @@
+package-as: Karmabook
+
+enable-nolib-creation: no
+
+ignore:
+  - README.md
+  - Art
+  - .github
+  - .gitignore
+  - .pkgmeta
+  - .claude
+
+manual-changelog: CHANGELOG.md
