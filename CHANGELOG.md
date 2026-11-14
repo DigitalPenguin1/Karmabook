@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0
+
+- Good Players in your group no longer alert: no group-join alert, no chat or nearby alerts while they're grouped with you, and no alert when they invite you
+- Tearing out a page you shared takes it back from guildmates' Guild tabs. The delete prompt says so
+- Unshares are sent again every 15 minutes for two weeks, so guildmates who were offline still get them
+- Renaming a shared page takes back the old name and shares the page again under the new one
+- Changing the label or note on a shared page reminds you that the guild still has the old version
+- Help explains the colored ! on names in chat
+- New yin-yang minimap button, and a yin-yang on the heart in the CurseForge art
+
 ## 0.1.0
 
 First version, for WoW: Forever.

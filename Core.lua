@@ -6,7 +6,7 @@
 Karmabook = {}
 local GB = Karmabook
 
-GB.VERSION = "0.1.0"
+GB.VERSION = "0.2.0"
 
 GB.COLORS = {
     BRAND = "|cffffd100",
@@ -38,6 +38,8 @@ local DEFAULTS = {
     -- Pages guildmates shared, waiting in the Guild tab
     shared = {},
     receiveShared = true,
+    -- Pages you took back from the guild, sent again for anyone who was offline
+    pendingUnshares = {},
     -- Guild sharing history for the Sync page in settings
     syncLog = {},
     -- Plain notes in the Notes tab, not about any player
@@ -426,7 +428,8 @@ end
 -- Corrects the name on a page and keeps its notes. A different name means a
 -- different character, so what was learned from the old name is forgotten and
 -- picked up again when the new name is seen. Returns nil and a reason if it
--- can't be done.
+-- can't be done. The second value is true when the page had been shared, so
+-- the old name was taken back from the guild and the caller can share it again.
 function GB:RenamePlayer(record, newName)
     local display = GB.NormalizeName(newName)
     if not display then
@@ -437,9 +440,15 @@ function GB:RenamePlayer(record, newName)
     end
 
     local oldKey, newKey = KeyOf(record.name), KeyOf(display)
+    local wasShared = false
     if newKey ~= oldKey then
         if self.db.players[newKey] then
             return nil, "There's already a page for " .. self.db.players[newKey].name .. "."
+        end
+        -- Guildmates have it under the old name, so take that copy back
+        wasShared = record.shared and true or false
+        if wasShared then
+            self.Share:TakeBack(record.name)
         end
         if record.guid then
             self.guidIndex[record.guid] = nil
@@ -450,7 +459,7 @@ function GB:RenamePlayer(record, newName)
     end
     record.name = display
     self:Refresh()
-    return record
+    return record, wasShared
 end
 
 -- Rewrites the newest note, keeping its original date. Clearing the text
@@ -480,13 +489,25 @@ function GB:RemoveLatestNote(record)
     self:Refresh()
 end
 
+-- A page shared with the guild is taken back from guildmates' Guild tabs too
 function GB:DeletePlayer(record)
+    if record.shared then
+        self.Share:TakeBack(record.name)
+    end
     local key = KeyOf(record.name)
     if record.guid then
         self.guidIndex[record.guid] = nil
     end
     self.db.players[key] = nil
     self:Refresh()
+end
+
+-- A shared page is a copy. Changing yours doesn't change what the guild has.
+function GB:WarnSharedOutOfDate(record)
+    if record.shared then
+        self:Print("Your guild still has the old version of " .. record.name
+            .. ". Pick Share > Guild on the page to send the update.")
+    end
 end
 
 function GB:CycleLabel(record)
@@ -496,6 +517,7 @@ function GB:CycleLabel(record)
             break
         end
     end
+    self:WarnSharedOutOfDate(record)
     self:Refresh()
 end
 

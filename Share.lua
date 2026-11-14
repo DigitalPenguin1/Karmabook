@@ -31,6 +31,14 @@ local ASSEMBLY_TIMEOUT = 30
 -- The game's limit on one chat line
 local SAY_MAX = 255
 
+-- Guildmates who were offline miss an unshare, so it's sent again now and
+-- then until it's this many seconds old
+local UNSHARE_KEEP = 14 * 24 * 60 * 60
+local UNSHARE_RESEND_EVERY = 15 * 60
+local UNSHARE_RESEND_FIRST = 30
+-- Most unshares sent in one go, to stay under the game's message limit
+local UNSHARE_BATCH = 10
+
 -- Seconds between answers to "who has Karmabook?"
 local ANSWER_COOLDOWN = 30
 local VERSION_MAX = 16
@@ -135,6 +143,8 @@ local function SharePage(record)
     end
     lastShared[record.name] = now
     record.shared = true
+    -- Sharing again replaces an unshare still waiting to be resent
+    GB.db.pendingUnshares[record.name:lower()] = nil
     GB.db.lastShareSent = time()
     GB:Refresh()
     return true
@@ -194,16 +204,57 @@ function Share:SendHello()
     return SendGuild(table.concat({ PROTOCOL, "H" }, SEP))
 end
 
+local function SendUnshare(name)
+    return SendGuild(table.concat({ PROTOCOL, "U", Field(name) }, SEP))
+end
+
+-- Remembered so it can be sent again for guildmates who were offline
+local function QueueUnshare(name)
+    GB.db.pendingUnshares[name:lower()] = { name = name, t = time() }
+end
+
 function Share:Unshare(record)
-    local sent, reason = SendGuild(table.concat({ PROTOCOL, "U", Field(record.name) }, SEP))
+    local sent, reason = SendUnshare(record.name)
     if not sent then
         Log("Couldn't unshare " .. Who(record.name) .. ": " .. reason)
         return false, reason
     end
+    QueueUnshare(record.name)
     Log("Unshared your page on " .. Who(record.name))
     record.shared = nil
     GB:Refresh()
     return true
+end
+
+-- Takes back a page that's going away (torn out, or renamed). Unlike
+-- Unshare it can't fail: if the message doesn't go out now, the resend does it.
+function Share:TakeBack(name)
+    QueueUnshare(name)
+    local sent, reason = SendUnshare(name)
+    if sent then
+        Log("Took back your page on " .. Who(name) .. " from the guild")
+    else
+        Log("Couldn't take back " .. Who(name) .. " yet (" .. reason .. "). It will be sent again later.")
+    end
+end
+
+-- Sends recent unshares again so guildmates who were offline catch up. Old
+-- ones are dropped.
+function Share:ResendUnshares()
+    if not IsInGuild() then
+        return
+    end
+    local now, sent = time(), 0
+    for key, pending in pairs(GB.db.pendingUnshares) do
+        if now - pending.t > UNSHARE_KEEP then
+            GB.db.pendingUnshares[key] = nil
+        elseif sent < UNSHARE_BATCH then
+            if not SendUnshare(pending.name) then
+                return
+            end
+            sent = sent + 1
+        end
+    end
 end
 
 ----------------------------------------------------------------------
@@ -466,4 +517,10 @@ function Share:Start()
     if IsInGuild() and C_GuildInfo and C_GuildInfo.GuildRoster then
         C_GuildInfo.GuildRoster()
     end
+    C_Timer.After(UNSHARE_RESEND_FIRST, function()
+        Share:ResendUnshares()
+    end)
+    C_Timer.NewTicker(UNSHARE_RESEND_EVERY, function()
+        Share:ResendUnshares()
+    end)
 end

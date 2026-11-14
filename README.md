@@ -16,11 +16,15 @@ Nothing is sent to anyone unless you pick **Share** on a page: **Guild** sends i
 
 Each page gets a label (Grudge, Kill on Sight, Caution, or Good Player), race and class, where you saw them, and dated notes. The tabs on the right of the book show one label at a time.
 
+A colored **!** before a name in chat means that player is in your book, in their label's color. Turn it off with **Mark names in chat** in settings. Good Players stay quiet while they're in your group and don't alert when they invite you.
+
 ## Sharing with your guild
 
 - Pick **Share > Guild** on a page, or tick **Share with guild** on the add form before you save. Only that page's newest note is sent, and only to guildmates who are online and have Karmabook.
 - Pages guildmates share wait in your **Guild** tab. They never alert you until you pick **Add to my book**. Turn off **Receive shared pages** in settings to stop getting them.
 - You can't share a page about someone in your guild.
+- Tearing out a page you shared takes it back from guildmates' Guild tabs. Guildmates who were offline get it when Karmabook sends it again (every 15 minutes, for two weeks). A page they already added to their own book stays theirs.
+- Renaming a shared page shares it again under the new name. Changing the label or note doesn't update the guild's copy until you share again.
 - The **Sync** page in settings (`/karmabook sync`) lists every page you shared or got, anything ignored and why. **Check guild** shows which online guildmates have Karmabook, so you know a share will reach someone.
 
 ## Commands

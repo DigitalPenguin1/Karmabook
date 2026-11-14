@@ -6,8 +6,8 @@ local GB = Karmabook
 local MinimapButton = {}
 GB.MinimapButton = MinimapButton
 
--- The Karmabook heart, round with see-through corners
-local ICON = "Interface\\AddOns\\Karmabook\\Media\\Icon"
+-- The yin-yang from the heart on the CurseForge art, round with see-through corners
+local ICON = "Interface\\AddOns\\Karmabook\\Media\\YinYang"
 local DEFAULT_ANGLE = 160
 
 local function PlaceAtAngle(button, degrees)

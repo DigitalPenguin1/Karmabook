@@ -32,6 +32,11 @@ local CHAT_EVENTS = {
 -- roster update
 local groupMembers = {}
 
+-- A Good player you're already grouped with doesn't need to keep alerting
+local function QuietInGroup(record)
+    return record.label == "GOOD" and groupMembers[record.name]
+end
+
 -- Prints what the game really sends for a sender, for checking name formats
 -- on Forever. Runs only while /karmabook debug is on.
 local function DebugSender(event, sender, sender2, guid)
@@ -81,7 +86,7 @@ function Watch:OnChat(event, sender, sender2, channelBaseName, guid)
     GB:MarkSeen(record, "Heard in " .. how, nil)
     GB:Refresh()
 
-    if GB.db.watch[info.group] then
+    if GB.db.watch[info.group] and not QuietInGroup(record) then
         GB:Alert(record, info.group == "whisper" and "whisper" or "chat", "in " .. how, firstNameOnly)
     end
 end
@@ -118,7 +123,7 @@ function Watch:CheckNearby(unit)
     end
     GB:MarkSeen(record, "Seen", GB:CurrentZone())
     GB:Refresh()
-    if GB.db.nearby then
+    if GB.db.nearby and not QuietInGroup(record) then
         GB:Alert(record, "nearby", "is nearby", firstNameOnly)
     end
 end
@@ -136,7 +141,7 @@ function Watch:CheckGroup()
             if not groupMembers[record.name] then
                 GB:MarkSeen(record, "In your group", GB:CurrentZone())
                 GB:Refresh()
-                if GB.db.groupWarnings then
+                if GB.db.groupWarnings and record.label ~= "GOOD" then
                     GB:Alert(record, "group", "is in your group", firstNameOnly)
                 end
             end
@@ -152,7 +157,7 @@ function Watch:OnInvite(name, guid)
         return
     end
     local record, firstNameOnly = GB:Find(name, Readable(guid))
-    if record then
+    if record and record.label ~= "GOOD" then
         GB:Alert(record, "invite", "invited you to a group", firstNameOnly)
     end
 end

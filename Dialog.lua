@@ -53,15 +53,33 @@ end
 
 local function SaveEdit(frame)
     local record = frame.editing
-    local renamed, reason = GB:RenamePlayer(record, frame.nameInput:GetText())
+    local oldLabel = record.label
+    local oldNote = GB.LatestNote(record)
+    oldNote = oldNote and oldNote.text
+    local renamed, wasShared = GB:RenamePlayer(record, frame.nameInput:GetText())
     if not renamed then
-        GB:Print(GB.COLORS.ERROR .. reason .. "|r")
+        GB:Print(GB.COLORS.ERROR .. wasShared .. "|r")
         return
     end
     record.label = frame.label
     ApplyIdentity(frame, record)
     GB:SetLatestNote(record, frame.noteInput:GetText(), frame.whereInput:GetText())
     GB:Print("Updated " .. record.name .. ".")
+    local ticked = frame.shareCheck:IsShown() and frame.shareCheck:GetChecked()
+    if wasShared and not ticked then
+        -- The old name was taken back, so share the page under its new one
+        local shared, reason = GB.Share:SharePage(record)
+        if shared then
+            GB:Print("Shared " .. record.name .. " with your guild under the new name.")
+        else
+            GB:Print(GB.COLORS.ERROR .. "Renamed, but not shared again: " .. reason .. "|r")
+        end
+    elseif not ticked then
+        local newNote = GB.LatestNote(record)
+        if record.label ~= oldLabel or (newNote and newNote.text) ~= oldNote then
+            GB:WarnSharedOutOfDate(record)
+        end
+    end
     ShareIfTicked(frame, record)
     frame:Hide()
     GB.Window:Select(record)

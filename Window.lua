@@ -60,12 +60,18 @@ local HELP_TEXT = table.concat({
         "Right-click a name in this book."),
     HelpSection("Alerts",
         "You get a sound and a banner with your note when a listed player talks or shows up nearby. "
-        .. "Chat alerts can't fire in dungeons, raids, or PvP matches."),
+        .. "Chat alerts can't fire in dungeons, raids, or PvP matches. "
+        .. "A Good Player stays quiet while they're in your group, and their invites don't alert."),
+    HelpSection("The ! in chat",
+        "A colored ! before a name in chat means that player is in your book. The color matches their label. "
+        .. "Turn it off with Mark names in chat in settings."),
     HelpSection("Dividers",
         "The tabs on the right show one label at a time."),
     HelpSection("Sharing",
         "Share on a page sends its newest note. Guild sends it quietly to guildmates who are online and have "
         .. "Karmabook. Pages they share wait in the Guild tab and never alert you until you add them to your book. "
+        .. "Tearing out a page you shared takes it back from their Guild tabs too, and it's sent again "
+        .. "for two weeks so guildmates who were offline get it too. Renaming a shared page shares it again under the new name. "
         .. "Say posts it in plain chat, where anyone nearby can read it, including the player it's about. "
         .. "/karmabook sync shows everything shared and received, and who in your guild has Karmabook."),
     HelpSection("Notes",
@@ -382,7 +388,9 @@ local function CreateRightPage(frame)
     details.undo:SetPoint("BOTTOMLEFT")
 
     local tear = Theme.CreateButton(details, "Tear out page", 100, function()
-        StaticPopup_Show("KARMABOOK_DELETE", frame.record.name, nil, frame.record)
+        local sharedNote = frame.record.shared
+            and "\n\nYou shared this page, so it will also be taken back from your guild." or ""
+        StaticPopup_Show("KARMABOOK_DELETE", frame.record.name, sharedNote, frame.record)
     end)
     tear:SetPoint("BOTTOMRIGHT")
 
@@ -872,7 +880,7 @@ StaticPopupDialogs.KARMABOOK_SAY = {
 }
 
 StaticPopupDialogs.KARMABOOK_DELETE = {
-    text = "Tear out the page for %s? All of your notes on them will be gone.",
+    text = "Tear out the page for %s? All of your notes on them will be gone.%s",
     button1 = DELETE,
     button2 = CANCEL,
     OnAccept = function(_, record)
