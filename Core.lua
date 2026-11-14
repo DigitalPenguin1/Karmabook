@@ -6,7 +6,7 @@
 Karmabook = {}
 local GB = Karmabook
 
-GB.VERSION = "0.2.0"
+GB.VERSION = "0.2.1"
 
 GB.COLORS = {
     BRAND = "|cffffd100",

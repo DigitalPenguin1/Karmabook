@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1
+
+- The addon list shows the yin-yang icon too, the same as the minimap button
+- Removed the old heart icon file, which nothing used anymore
+- The yin-yang on the heart in the CurseForge art now sits centered under the mouth
+- New CurseForge logo with the yin-yang on the heart
+
 ## 0.2.0
 
 - Good Players in your group no longer alert: no group-join alert, no chat or nearby alerts while they're grouped with you, and no alert when they invite you

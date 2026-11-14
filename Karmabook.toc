@@ -2,10 +2,10 @@
 ## Title: |cffffd100Karmabook|r
 ## Notes: Private notes on players. Alerts you with your note when they talk or show up.
 ## Author: Relyk Rageroot
-## Version: 0.2.0
+## Version: 0.2.1
 ## X-Curse-Project-ID: 1795647
 ## SavedVariables: KarmabookDB
-## IconTexture: Interface\AddOns\Karmabook\Media\Icon
+## IconTexture: Interface\AddOns\Karmabook\Media\YinYang
 ## AddonCompartmentFunc: Karmabook_OnAddonCompartmentClick
 ## AddonCompartmentFuncOnEnter: Karmabook_OnAddonCompartmentEnter
 ## AddonCompartmentFuncOnLeave: Karmabook_OnAddonCompartmentLeave
