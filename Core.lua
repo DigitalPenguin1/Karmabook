@@ -6,7 +6,7 @@
 Karmabook = {}
 local GB = Karmabook
 
-GB.VERSION = "0.2.1"
+GB.VERSION = "0.3.0"
 
 GB.COLORS = {
     BRAND = "|cffffd100",
@@ -28,6 +28,12 @@ GB.DEFAULT_LABEL = "GRUDGE"
 -- What the entry form offers. Skyborne plays on both factions.
 GB.RACES = {
     "Dwarf", "Gnome", "Human", "Night Elf", "Orc", "Skyborne", "Tauren", "Troll", "Undead",
+}
+GB.FACTIONS = { "Alliance", "Horde" }
+-- Skyborne is left out: their faction has to be seen or picked
+GB.RACE_FACTION = {
+    ["Dwarf"] = "Alliance", ["Gnome"] = "Alliance", ["Human"] = "Alliance", ["Night Elf"] = "Alliance",
+    ["Orc"] = "Horde", ["Tauren"] = "Horde", ["Troll"] = "Horde", ["Undead"] = "Horde",
 }
 GB.CLASSES = {
     "Druid", "Hunter", "Mage", "Paladin", "Priest", "Rogue", "Shaman", "Warlock", "Warrior",
@@ -255,6 +261,21 @@ local function StoreIdentity(record, race, class)
     end
 end
 
+-- Levels change, so the newest one always wins. The game says -1 for a
+-- player too far above you to read, which tells us nothing.
+function GB:SetLevel(record, level)
+    level = tonumber(GB.Readable(level))
+    if record and level and level > 0 and level <= 200 then
+        record.level = level
+    end
+end
+
+-- From a /who line: level always, race and class only where the page has none
+function GB:LearnFromWho(record, level, race, class)
+    self:SetLevel(record, level)
+    StoreIdentity(record, not record.race and race or nil, not record.class and class or nil)
+end
+
 -- Fills in race and class from a GUID. The game only knows these once the
 -- client has seen that player, so it can take a few tries.
 function GB:LearnIdentity(record, guid)
@@ -269,6 +290,17 @@ end
 
 -- For when you can see the player but their GUID is hidden
 function GB:LearnIdentityFromUnit(record, unit)
+    local levelOk, level = pcall(UnitLevel, unit)
+    if levelOk then
+        self:SetLevel(record, level)
+    end
+    if not record.faction then
+        local ok, faction = pcall(UnitFactionGroup, unit)
+        faction = ok and GB.Readable(faction) or nil
+        if faction == "Alliance" or faction == "Horde" then
+            record.faction = faction
+        end
+    end
     if record.race and record.class then
         return
     end
@@ -277,12 +309,46 @@ function GB:LearnIdentityFromUnit(record, unit)
     StoreIdentity(record, raceOk and race or nil, classOk and class or nil)
 end
 
--- "Undead Rogue", or nil if neither is known yet
-function GB.FormatIdentity(record)
-    if record.race and record.class then
-        return record.race .. " " .. record.class
+-- What you picked or saw, otherwise what their race says. nil for unknown.
+function GB.FactionOf(record)
+    return record.faction or GB.RACE_FACTION[record.race]
+end
+
+function GB:PlayerFaction()
+    if not self.faction then
+        local faction = GB.Readable(UnitFactionGroup("player"))
+        if faction == "Alliance" or faction == "Horde" then
+            self.faction = faction
+        end
     end
-    return record.race or record.class
+    return self.faction
+end
+
+-- True only when both factions are known and differ
+function GB:IsOtherFaction(record)
+    local theirs, mine = GB.FactionOf(record), self:PlayerFaction()
+    return theirs ~= nil and mine ~= nil and theirs ~= mine
+end
+
+-- Guild, friends, and /who only ever show your own faction
+function GB:LearnSameFaction(record)
+    if record and not GB.FactionOf(record) then
+        record.faction = self:PlayerFaction()
+    end
+end
+
+-- "Level 42 Undead Rogue", or nil if none of it is known yet
+function GB.FormatIdentity(record)
+    local identity
+    if record.race and record.class then
+        identity = record.race .. " " .. record.class
+    else
+        identity = record.race or record.class
+    end
+    if record.level then
+        return "Level " .. record.level .. (identity and (" " .. identity) or "")
+    end
+    return identity
 end
 
 -- Returns the record for a player, and true as the second value when only
@@ -454,6 +520,7 @@ function GB:RenamePlayer(record, newName)
             self.guidIndex[record.guid] = nil
         end
         record.guid, record.race, record.class, record.seen, record.shared = nil, nil, nil, nil, nil
+        record.faction, record.level = nil, nil
         self.db.players[oldKey] = nil
         self.db.players[newKey] = record
     end

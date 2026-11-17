@@ -18,12 +18,38 @@ local function UpdatePicker(button, value)
     button:SetText(value or NOT_SET)
 end
 
--- Loads the pickers from a player's page, or empties them for a new one
-local function FillIdentity(frame, record)
+-- What the game shows about a unit right now. Read when the form opens,
+-- since the target may have changed by the time you press Save.
+local function Snapshot(unit)
+    local function Read(func)
+        local ok, value = pcall(func, unit)
+        return ok and GB.Readable(value) or nil
+    end
+    local faction = Read(UnitFactionGroup)
+    return {
+        level = Read(UnitLevel),
+        race = Read(UnitRace),
+        class = Read(UnitClass),
+        faction = (faction == "Alliance" or faction == "Horde") and faction or nil,
+    }
+end
+
+-- Loads the pickers from a player's page, or empties them for a new one.
+-- snapshot fills in whatever the page doesn't have yet.
+local function FillIdentity(frame, record, snapshot)
     frame.race, frame.startRace = record and record.race, record and record.race
     frame.class, frame.startClass = record and record.class, record and record.class
+    -- Shows what the race implies too, but that's only saved if you change it
+    local faction = record and GB.FactionOf(record)
+    frame.faction, frame.startFaction = faction, faction
+    if snapshot then
+        frame.race = frame.race or snapshot.race
+        frame.class = frame.class or snapshot.class
+        frame.faction = frame.faction or snapshot.faction or GB.RACE_FACTION[frame.race]
+    end
     UpdatePicker(frame.raceButton, frame.race)
     UpdatePicker(frame.classButton, frame.class)
+    UpdatePicker(frame.factionButton, frame.faction)
 end
 
 -- Only what you actually changed is saved. A rename clears race and class
@@ -35,6 +61,9 @@ local function ApplyIdentity(frame, record)
     end
     if frame.class ~= frame.startClass then
         record.class = frame.class
+    end
+    if frame.faction ~= frame.startFaction then
+        record.faction = frame.faction
     end
 end
 
@@ -97,6 +126,12 @@ local function Save(frame)
         return
     end
     ApplyIdentity(frame, record)
+    -- Their level as of adding them. Without a unit to read it from, a /who
+    -- gets it, and pressing Save is the click the game wants for that.
+    GB:SetLevel(record, frame.snapshot and frame.snapshot.level)
+    if not record.level then
+        GB.Presence:Check(record, true)
+    end
     GB:Print("Saved " .. record.name .. ".")
     ShareIfTicked(frame, record)
     frame:Hide()
@@ -118,7 +153,8 @@ local function AddField(frame, text, y, width, maxLetters)
 end
 
 -- A line you click to pick from a list. field is the form value it sets.
-local function AddPicker(frame, text, x, y, options, field)
+-- onPick, if given, runs after a choice.
+local function AddPicker(frame, text, x, y, width, options, field, onPick)
     local label = frame:CreateFontString(nil, "OVERLAY")
     label:SetFontObject(Theme.FONT_SMALL)
     label:SetPoint("TOPLEFT", x, y)
@@ -127,9 +163,12 @@ local function AddPicker(frame, text, x, y, options, field)
     local function Pick(button, value)
         frame[field] = value
         UpdatePicker(button, value)
+        if onPick then
+            onPick(value)
+        end
     end
 
-    local button = Theme.CreateButton(frame, "", 150, function(self)
+    local button = Theme.CreateButton(frame, "", width, function(self)
         MenuUtil.CreateContextMenu(self, function(_, root)
             root:CreateButton("Not set", function()
                 Pick(self, nil)
@@ -161,8 +200,16 @@ local function GetFrame()
     Theme.AddMargin(frame, 20)
 
     frame.nameInput = AddField(frame, "First and surname", -62, 230, 50)
-    frame.raceButton = AddPicker(frame, "Race", 26, -112, GB.RACES, "race")
-    frame.classButton = AddPicker(frame, "Class", 196, -112, GB.CLASSES, "class")
+    -- A race that's only on one side settles the faction picker too
+    frame.raceButton = AddPicker(frame, "Race", 26, -112, 110, GB.RACES, "race", function(race)
+        local faction = GB.RACE_FACTION[race]
+        if faction then
+            frame.faction = faction
+            UpdatePicker(frame.factionButton, faction)
+        end
+    end)
+    frame.classButton = AddPicker(frame, "Class", 146, -112, 110, GB.CLASSES, "class")
+    frame.factionButton = AddPicker(frame, "Faction", 266, -112, 110, GB.FACTIONS, "faction")
     frame.whereInput = AddField(frame, "Where you saw them", -162, 366, GB.ZONE_MAX)
     frame.noteInput = AddField(frame, "What happened?", -212, 366, GB.NOTE_MAX)
 
@@ -213,17 +260,18 @@ local function GetFrame()
     return frame
 end
 
-function Dialog:Open(name, guid)
+function Dialog:Open(name, guid, unit)
     local frame = GetFrame()
     local record = name and GB:Find(name, guid)
     frame.editing = nil
+    frame.snapshot = unit and Snapshot(unit) or nil
     frame.title:SetText("A new entry")
     frame.guid = guid
     frame.label = record and record.label or GB.DEFAULT_LABEL
     frame.nameInput:SetText(record and record.name or name or "")
     frame.noteInput:SetText("")
     frame.whereInput:SetText(GB:CurrentZone() or "")
-    FillIdentity(frame, record)
+    FillIdentity(frame, record, frame.snapshot)
     UpdateLabelButton(frame)
     Dialog:ResetShare(frame)
     frame:Show()
@@ -239,6 +287,7 @@ function Dialog:OpenEdit(record)
     local frame = GetFrame()
     local latest = GB.LatestNote(record)
     frame.editing = record
+    frame.snapshot = nil
     frame.title:SetText("Edit entry")
     frame.guid = nil
     frame.label = record.label
@@ -267,5 +316,5 @@ function Dialog:OpenForTarget()
     if UnitIsPlayer("target") and not UnitIsUnit("target", "player") then
         name = GB:UnitFullName("target")
     end
-    self:Open(name, name and GB.Readable(UnitGUID("target")) or nil)
+    self:Open(name, name and GB.Readable(UnitGUID("target")) or nil, name and "target" or nil)
 end

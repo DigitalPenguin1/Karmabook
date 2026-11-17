@@ -68,12 +68,13 @@ local function MarkSenderName(_, decoratedName, _, sender, ...)
     return label.color .. "!|r" .. decoratedName
 end
 
--- The player a right-click menu is for, as a full name, plus their GUID
+-- The player a right-click menu is for, as a full name, plus their GUID and
+-- unit when there is one (portraits have it, chat names don't)
 local function ContextPlayer(contextData)
     local guid = Readable(contextData.guid)
     local unit = Readable(contextData.unit)
     if unit then
-        return GB:UnitFullName(unit), guid or Readable(UnitGUID(unit))
+        return GB:UnitFullName(unit), guid or Readable(UnitGUID(unit)), unit
     end
     local name = Readable(contextData.name)
     local surname = Readable(contextData.surname)
@@ -84,7 +85,7 @@ local function ContextPlayer(contextData)
 end
 
 local function OnMenu(_, rootDescription, contextData)
-    local ok, name, guid = pcall(ContextPlayer, contextData)
+    local ok, name, guid, unit = pcall(ContextPlayer, contextData)
     if not ok or not name or GB:IsSelf(name) then
         return
     end
@@ -92,7 +93,7 @@ local function OnMenu(_, rootDescription, contextData)
     rootDescription:CreateDivider()
     rootDescription:CreateTitle("Karmabook")
     rootDescription:CreateButton(record and "Add a note" or "Add to Karmabook", function()
-        GB.Dialog:Open(name, guid)
+        GB.Dialog:Open(name, guid, unit)
     end)
 end
 

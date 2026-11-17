@@ -16,6 +16,7 @@ frame:SetScript("OnEvent", function(self, event, name)
         GB.Options:Register()
         GB.Hooks:Install()
         GB.Watch:Start()
+        GB.Presence:Start()
         GB.Share:Start()
     end
 end)

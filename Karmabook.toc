@@ -2,7 +2,7 @@
 ## Title: |cffffd100Karmabook|r
 ## Notes: Private notes on players. Alerts you with your note when they talk or show up.
 ## Author: Relyk Rageroot
-## Version: 0.2.1
+## Version: 0.3.0
 ## X-Curse-Project-ID: 1795647
 ## SavedVariables: KarmabookDB
 ## IconTexture: Interface\AddOns\Karmabook\Media\YinYang
@@ -14,6 +14,7 @@ Core.lua
 Theme.lua
 Alerts.lua
 Watch.lua
+Presence.lua
 Hooks.lua
 Share.lua
 SyncLog.lua

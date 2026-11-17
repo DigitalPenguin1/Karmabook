@@ -57,7 +57,7 @@ local HELP_TEXT = table.concat({
     HelpSection("Adding someone",
         "Right-click their name in chat or on a portrait, or press New page."),
     HelpSection("Editing a page",
-        "Right-click a name in this book."),
+        "Right-click a name in this book and pick Edit page. Whisper is there too."),
     HelpSection("Alerts",
         "You get a sound and a banner with your note when a listed player talks or shows up nearby. "
         .. "Chat alerts can't fire in dungeons, raids, or PvP matches. "
@@ -65,6 +65,14 @@ local HELP_TEXT = table.concat({
     HelpSection("The ! in chat",
         "A colored ! before a name in chat means that player is in your book. The color matches their label. "
         .. "Turn it off with Mark names in chat in settings."),
+    HelpSection("Online dots",
+        "Green means online, red offline, faint means nobody knows yet. Guildmates, friends, your group, "
+        .. "and anyone seen in the last few minutes update on their own. For anyone else, clicking their name "
+        .. "runs a quiet /who. The game only allows a /who after a click, so it can't check the whole book. "
+        .. "/who can't see the other faction, so their dot stays faint. Faction comes from race, or from "
+        .. "seeing them, or set it on the form for Skyborne. "
+        .. "Check online under the list runs /who on the next name each time you press it, and right-click > "
+        .. "Check online does one name. Hover the name on a page to see where the answer came from."),
     HelpSection("Dividers",
         "The tabs on the right show one label at a time."),
     HelpSection("Sharing",
@@ -130,6 +138,98 @@ local function CloseMisc(frame)
     frame.miscBody:ClearFocus()
 end
 
+-- Opens the chat box with a whisper to name started, the same as the
+-- Whisper option on a portrait
+local function Whisper(name)
+    local sendTell = (ChatFrameUtil and ChatFrameUtil.SendTell) or ChatFrame_SendTell
+    if sendTell then
+        sendTell(name)
+    else
+        ChatFrame_OpenChat("/w " .. name .. " ")
+    end
+end
+
+-- Right-click menu for a name. onEdit is left out for
+-- pages that aren't yours to edit, like the Guild tab.
+local function OpenNameMenu(owner, record, onEdit)
+    local name = record and record.name
+    if not name then
+        return
+    end
+    MenuUtil.CreateContextMenu(owner, function(_, root)
+        root:CreateTitle(name)
+        if not GB:IsSelf(name) then
+            root:CreateButton("Whisper", function()
+                Whisper(name)
+            end)
+            -- Picking this is a click, which is what the game wants before a /who
+            if not GB:IsOtherFaction(record) then
+                root:CreateButton("Check online (/who)", function()
+                    local sent, reason = GB.Presence:Check(record, true)
+                    if not sent then
+                        GB.Presence.lastNote = reason
+                        GB:Refresh()
+                    end
+                end)
+            end
+        end
+        if onEdit then
+            root:CreateButton("Edit page", onEdit)
+        end
+    end)
+end
+
+-- Race and class, plus faction when the race doesn't already say it
+local function IdentityLine(record)
+    local identity = GB.FormatIdentity(record)
+    local faction = GB.FactionOf(record)
+    if faction and not GB.RACE_FACTION[record.race] then
+        identity = identity and (identity .. ", " .. faction) or faction
+    end
+    return identity or (FADED .. "Race and class not seen yet|r")
+end
+
+local DOT_SIZE = 8
+-- The game's own crest icons, by file ID
+local FACTION_ICONS = {
+    Alliance = 2173919, -- ui-allianceicon
+    Horde = 2173920, -- ui-hordeicon
+}
+local ROW_ICON_SIZE = 14
+local HEADING_ICON_SIZE = 18
+
+-- Shows the crest for their faction, or hides it when unknown. Returns
+-- whether it's showing, so the caller can close the gap.
+local function PaintFaction(icon, record)
+    local fileID = FACTION_ICONS[GB.FactionOf(record)]
+    if fileID then
+        icon:SetTexture(fileID)
+    end
+    icon:SetShown(fileID ~= nil)
+    return fileID ~= nil
+end
+local DOT_COLORS = {
+    online = { 0.18, 0.62, 0.22, 1 },
+    offline = { 0.70, 0.16, 0.12, 1 },
+}
+local DOT_UNKNOWN = { 0.24, 0.17, 0.09, 0.3 }
+
+-- A round dot: green online, red offline, faint ink when nobody knows
+local function CreateDot(parent)
+    local dot = parent:CreateTexture(nil, "OVERLAY")
+    dot:SetSize(DOT_SIZE, DOT_SIZE)
+    local mask = parent:CreateMaskTexture()
+    mask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+    mask:SetAllPoints(dot)
+    dot:AddMaskTexture(mask)
+    return dot
+end
+
+local function PaintDot(dot, record)
+    local color = DOT_COLORS[GB.Presence:Get(record)] or DOT_UNKNOWN
+    dot:SetColorTexture(unpack(color))
+end
+
 local function GetRow(frame, index)
     local row = frame.rows[index]
     if row then
@@ -154,6 +254,14 @@ local function GetRow(frame, index)
 
     row.name = row:CreateFontString(nil, "OVERLAY")
     row.name:SetFontObject(Theme.FONT_BODY)
+    row.dot = CreateDot(row)
+    row.dot:SetPoint("LEFT", 6, 0)
+
+    row.faction = row:CreateTexture(nil, "OVERLAY")
+    row.faction:SetSize(ROW_ICON_SIZE, ROW_ICON_SIZE)
+    row.faction:SetPoint("LEFT", row.dot, "RIGHT", 3, 0)
+
+    -- Moved right of the dot on player rows when the list is drawn
     row.name:SetPoint("LEFT", 6, 0)
     row.name:SetPoint("RIGHT", row.count, "LEFT", -6, 0)
     row.name:SetJustifyH("LEFT")
@@ -161,17 +269,28 @@ local function GetRow(frame, index)
 
     row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     row:SetScript("OnClick", function(self, mouseButton)
+        local record = self.record
+        if not self.isMisc and mouseButton == "LeftButton" then
+            -- A click is the only time the game lets us send a /who. Right
+            -- clicks leave it to the menu's Check online.
+            GB.Presence:CheckOnClick(record)
+        end
         if self.isShared then
-            Window:SelectShared(self.record)
+            Window:SelectShared(record)
+            if mouseButton == "RightButton" then
+                OpenNameMenu(self, record)
+            end
             return
         end
         if self.isMisc then
-            Window:OpenMisc(self.record)
+            Window:OpenMisc(record)
             return
         end
-        Window:Select(self.record)
+        Window:Select(record)
         if mouseButton == "RightButton" then
-            GB.Dialog:OpenEdit(self.record)
+            OpenNameMenu(self, record, function()
+                GB.Dialog:OpenEdit(record)
+            end)
         end
     end)
     frame.rows[index] = row
@@ -312,8 +431,27 @@ local function CreateRightPage(frame)
     details.nameHit:SetPoint("TOPLEFT")
     details.nameHit:SetSize(PAGE_WIDTH - 20, 22)
     details.nameHit:RegisterForClicks("RightButtonUp")
-    details.nameHit:SetScript("OnClick", function()
-        GB.Dialog:OpenEdit(frame.record)
+    details.dot = CreateDot(details)
+    details.faction = details:CreateTexture(nil, "OVERLAY")
+    details.faction:SetSize(HEADING_ICON_SIZE, HEADING_ICON_SIZE)
+    details.nameHit:SetScript("OnEnter", function(self)
+        if not frame.record then
+            return
+        end
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOMLEFT")
+        GameTooltip:SetText(frame.record.name)
+        GameTooltip:AddLine(GB.Presence:Describe(frame.record))
+        GameTooltip:AddLine("Right-click to whisper or edit", 0.6, 0.6, 0.6)
+        GameTooltip:Show()
+    end)
+    details.nameHit:SetScript("OnLeave", GameTooltip_Hide)
+    details.nameHit:SetScript("OnClick", function(self)
+        local record = frame.record
+        if record then
+            OpenNameMenu(self, record, function()
+                GB.Dialog:OpenEdit(record)
+            end)
+        end
     end)
 
     details.identity = details:CreateFontString(nil, "OVERLAY")
@@ -626,6 +764,34 @@ local function CreateFrames()
     CreateIncomingPage(frame)
     CreateMiscPage(frame)
 
+    -- Each press /whos one name: the game allows one per click, and the
+    -- server ignores them sent too close together
+    local checkOnline = Theme.CreateButton(frame, "Check online", 100, function()
+        local sent, reason = GB.Presence:CheckNext(GB:GetSorted())
+        if not sent then
+            GB.Presence.lastNote = reason
+        end
+        Window:Refresh()
+    end)
+    checkOnline:SetPoint("BOTTOMLEFT", LIST_LEFT, 6)
+    checkOnline:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText("Check online")
+        GameTooltip:AddLine("Runs /who on the next player in your book who isn't accounted for. "
+            .. "The game only allows one per click, and the server needs a few seconds between them, "
+            .. "so press it again to keep going. The other faction is skipped.", 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    checkOnline:SetScript("OnLeave", GameTooltip_Hide)
+    frame.checkOnline = checkOnline
+
+    frame.whoNote = frame:CreateFontString(nil, "OVERLAY")
+    frame.whoNote:SetFontObject(Theme.FONT_SMALL)
+    frame.whoNote:SetPoint("LEFT", checkOnline, "RIGHT", 6, 0)
+    frame.whoNote:SetWidth(LIST_WIDTH - 106)
+    frame.whoNote:SetJustifyH("LEFT")
+    frame.whoNote:SetWordWrap(false)
+
     -- Sits in the corner, left of the red margin
     local helpButton = Theme.CreateButton(frame, "?", 24, function()
         Window:ToggleHelp()
@@ -686,7 +852,15 @@ local function RefreshRightPage(frame)
 
     GB:LearnIdentity(record, record.guid)
     details.name:SetText(record.name)
-    details.identity:SetText(GB.FormatIdentity(record) or (FADED .. "Race and class not seen yet|r"))
+    -- Name, then crest, then dot
+    local after = details.name:GetStringWidth() + 6
+    details.faction:SetPoint("LEFT", details.name, "LEFT", after, 0)
+    if PaintFaction(details.faction, record) then
+        after = after + HEADING_ICON_SIZE + 4
+    end
+    details.dot:SetPoint("LEFT", details.name, "LEFT", after + 2, 0)
+    PaintDot(details.dot, record)
+    details.identity:SetText(IdentityLine(record))
     details.seen:SetText(GB.FormatSeen(record))
     details.label:SetText(GB.FormatLabelInk(record))
     details.mute:SetText(record.muted and "Unmute alerts" or "Mute alerts")
@@ -726,6 +900,10 @@ function Window:Refresh()
     frame.title:SetText(tabInfo.title or (tabInfo.label and tabInfo.text) or "Karmabook")
     RefreshTabs(frame)
 
+    frame.checkOnline:SetShown(not tabInfo.misc)
+    frame.whoNote:SetShown(not tabInfo.misc)
+    frame.whoNote:SetText(GB.Presence.lastNote or "")
+
     local searchText = frame.search:GetText()
     local list
     if tabInfo.guild then
@@ -741,6 +919,18 @@ function Window:Refresh()
         row.name:SetText(tabInfo.misc and record.title or (GB.InkColor(record) .. record.name .. "|r"))
         row.isShared = tabInfo.guild
         row.isMisc = tabInfo.misc
+        row.dot:SetShown(not tabInfo.misc)
+        local nameLeft = 6
+        if tabInfo.misc then
+            row.faction:Hide()
+        else
+            PaintDot(row.dot, record)
+            nameLeft = 10 + DOT_SIZE
+            if PaintFaction(row.faction, record) then
+                nameLeft = nameLeft + ROW_ICON_SIZE + 3
+            end
+        end
+        row.name:SetPoint("LEFT", nameLeft, 0)
         row.count:SetText((tabInfo.guild or tabInfo.misc) and "" or #record.notes)
         row.selected:SetShown(record == frame.record or record == frame.sharedEntry or record == frame.miscNote)
         row:Show()

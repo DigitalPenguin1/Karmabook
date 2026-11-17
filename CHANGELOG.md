@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0
+
+- Right-clicking a name in the book opens a menu with Whisper and Edit page. Guild tab names get Whisper too
+- A dot by each name shows if they're online: green online, red offline, faint unknown. Guild roster, friends list, group, and recent sightings update it on their own. Clicking a name runs a quiet /who for anyone else
+- Pages know a player's faction: from their race, from seeing them, or from the new Faction picker on the form (needed for Skyborne). The other faction's dots stay faint, since /who can't see them
+- Alliance and Horde crests next to names in the list and on the page, once the faction is known
+- Check online under the list runs /who on the next unchecked name each press, and right-click has Check online (/who) for one name
+- Pages show the player's level, picked up from /who, the guild roster, and seeing them. A /who also fills in missing race and class
+- Adding someone from their target or portrait saves their level, and fills in race, class, and faction on the form. Adding from a chat name runs a /who on Save to get the level
+
 ## 0.2.1
 
 - The addon list shows the yin-yang icon too, the same as the minimap button
