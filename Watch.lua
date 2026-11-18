@@ -32,9 +32,11 @@ local CHAT_EVENTS = {
 -- roster update
 local groupMembers = {}
 
--- A Good player you're already grouped with doesn't need to keep alerting
+-- Anyone you're already grouped with stays quiet. Joining the group gave its
+-- one alert (none for Good), and after that every party line and nameplate
+-- would fire again.
 local function QuietInGroup(record)
-    return record.label == "GOOD" and groupMembers[record.name]
+    return groupMembers[record.name]
 end
 
 -- Prints what the game really sends for a sender, for checking name formats

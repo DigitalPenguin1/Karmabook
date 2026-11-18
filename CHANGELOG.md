@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1
+
+- Players in your group no longer alert for party chat or showing up nearby, whatever their label. Before, only Good Players went quiet
+
 ## 0.3.0
 
 - Right-clicking a name in the book opens a menu with Whisper and Edit page. Guild tab names get Whisper too

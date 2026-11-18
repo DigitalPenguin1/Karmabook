@@ -16,7 +16,7 @@ Nothing is sent to anyone unless you pick **Share** on a page: **Guild** sends i
 
 Each page gets a label (Grudge, Kill on Sight, Caution, or Good Player), race and class, where you saw them, and dated notes. The tabs on the right of the book show one label at a time.
 
-A colored **!** before a name in chat means that player is in your book, in their label's color. Turn it off with **Mark names in chat** in settings. Good Players stay quiet while they're in your group and don't alert when they invite you.
+A colored **!** before a name in chat means that player is in your book, in their label's color. Turn it off with **Mark names in chat** in settings. Anyone in your group stays quiet after the one alert when they join. Good Players don't alert when they invite you or join.
 
 ## Sharing with your guild
 

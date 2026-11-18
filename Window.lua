@@ -61,7 +61,7 @@ local HELP_TEXT = table.concat({
     HelpSection("Alerts",
         "You get a sound and a banner with your note when a listed player talks or shows up nearby. "
         .. "Chat alerts can't fire in dungeons, raids, or PvP matches. "
-        .. "A Good Player stays quiet while they're in your group, and their invites don't alert."),
+        .. "Anyone in your group stays quiet after the one alert when they join. A Good Player's invites and joins don't alert."),
     HelpSection("The ! in chat",
         "A colored ! before a name in chat means that player is in your book. The color matches their label. "
         .. "Turn it off with Mark names in chat in settings."),
