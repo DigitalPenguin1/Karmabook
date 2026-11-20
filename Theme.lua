@@ -1,8 +1,10 @@
 -- Karmabook - Notebook look
--- Leather cover, spellbook pages, ruled lines, and ink. All of it is built
--- from Blizzard's own art and fonts, so there are no libraries or image files
--- to ship. A plain paper color sits under each page in case a texture is ever
--- removed from the game.
+-- Leather cover, spellbook pages, ruled lines, and ink, built from Blizzard's
+-- own art and fonts with no libraries. The only images shipped are the
+-- Karmabook marks in Media (the icon, the title's initial, the page stamp)
+-- and a few white shapes tinted in code (the ribbon's tail, the tabs'
+-- rounded corners). A plain paper color sits under each page in case a
+-- texture is ever removed from the game.
 
 local GB = Karmabook
 
@@ -92,24 +94,6 @@ local function AddPage(frame, left, right, mirrored)
     wash:SetColorTexture(Theme.Color(Theme.PAPER_WASH))
 end
 
--- Fills a small region with paper dyed one color. It takes a plain patch from
--- the middle of the page art, so the grain shows and no corner flourishes
--- squash into it.
-function Theme.AddDyedPaper(region, dye)
-    local paper = region:CreateTexture(nil, "BACKGROUND", nil, 0)
-    paper:SetAllPoints()
-    paper:SetColorTexture(Theme.Color(dye, 1))
-
-    local art = region:CreateTexture(nil, "BACKGROUND", nil, 1)
-    art:SetAllPoints()
-    art:SetTexture(PAGE_ART)
-    art:SetTexCoord(0.40, 0.55, 0.30, 0.60)
-
-    local tint = region:CreateTexture(nil, "BACKGROUND", nil, 2)
-    tint:SetAllPoints()
-    tint:SetColorTexture(Theme.Color(dye, 0.6))
-end
-
 -- Darkens both sides of the fold where the pages meet
 local function AddSpine(frame)
     local clear, shadow = CreateColor(0, 0, 0, 0), CreateColor(0, 0, 0, 0.4)
@@ -174,6 +158,21 @@ function Theme.CreateWindow(name, width, height, twoPages)
     return frame
 end
 
+-- Places a one-pixel line across parent at y. A plain 1-unit height lands
+-- between screen pixels at most UI scales, so some lines draw two pixels
+-- thick and some vanish. PixelUtil snaps both to whole pixels.
+function Theme.PixelLine(line, parent, y)
+    if PixelUtil then
+        PixelUtil.SetHeight(line, 1, 1)
+        PixelUtil.SetPoint(line, "TOPLEFT", parent, "TOPLEFT", 0, y)
+        PixelUtil.SetPoint(line, "TOPRIGHT", parent, "TOPRIGHT", 0, y)
+    else
+        line:SetHeight(1)
+        line:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, y)
+        line:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, y)
+    end
+end
+
 -- Keeps one horizontal line per step on content, adding or hiding lines as
 -- the count changes. offset moves them all down.
 function Theme.DrawRules(content, pitch, count, offset)
@@ -182,13 +181,11 @@ function Theme.DrawRules(content, pitch, count, offset)
         local rule = content.rules[index]
         if not rule then
             rule = content:CreateTexture(nil, "BACKGROUND")
-            rule:SetHeight(1)
             rule:SetColorTexture(Theme.Color(Theme.RULE))
             content.rules[index] = rule
         end
         rule:ClearAllPoints()
-        rule:SetPoint("TOPLEFT", 0, -(offset + index * pitch))
-        rule:SetPoint("TOPRIGHT", 0, -(offset + index * pitch))
+        Theme.PixelLine(rule, content, -(offset + index * pitch))
         rule:Show()
     end
     for index = count + 1, #content.rules do
@@ -225,8 +222,9 @@ function Theme.CreateCloseButton(parent)
     button:SetPoint("TOPRIGHT", -16, -16)
 
     local label = button:CreateFontString(nil, "OVERLAY")
-    label:SetFontObject(Theme.FONT_BODY)
-    label:SetPoint("CENTER")
+    -- The title's lettering, so it reads as part of the page, not a widget
+    label:SetFontObject(Theme.FONT_HEADING)
+    label:SetPoint("CENTER", 0, 1)
     label:SetText("X")
 
     local highlight = button:CreateTexture(nil, "HIGHLIGHT")

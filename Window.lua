@@ -11,10 +11,34 @@ GB.Window = Window
 local WIDTH, HEIGHT = 720, 490
 local ROW_HEIGHT = 22
 
+-- On the All tab the badge stands in for the K of the title, like an
+-- illuminated initial, and the rest of the name is ordinary title ink
+local INITIAL = "Interface\\AddOns\\Karmabook\\Media\\Initial"
+local INITIAL_SIZE = 30
+
+-- The swirl logo, pressed faintly into the empty right page like a stamp
+local STAMP = "Interface\\AddOns\\Karmabook\\Media\\Stamp"
+local STAMP_SIZE = 150
+local STAMP_ALPHA = 0.16
+
+-- A purple bookmark down the right page beside the fold, the full height of
+-- the book like a real one. Its notched tail ends on the cover's bottom
+-- edge, inside the window. The tail art is white so the color lives here.
+local RIBBON_TAIL = "Interface\\AddOns\\Karmabook\\Media\\RibbonTail"
+local RIBBON = { 0.48, 0.20, 0.55 }
+local RIBBON_WIDTH = 10
+local RIBBON_TAIL_LENGTH = 22
+local RIBBON_SHADOW = 2
+-- Leaves room for the shadow, so the notch stops just short of the frame's edge
+local RIBBON_LENGTH = HEIGHT - RIBBON_TAIL_LENGTH - RIBBON_SHADOW
+
+-- Space under the list for Check online, clear of the page's bottom edge
+local FOOTER_Y = 14
+
 -- Left page
 local LIST_LEFT = 44
 local LIST_TOP = -90
-local LIST_BOTTOM = 30
+local LIST_BOTTOM = 38
 local LIST_WIDTH = 270
 local LIST_ROWS = math.ceil((HEIGHT + LIST_TOP - LIST_BOTTOM) / ROW_HEIGHT) + 1
 
@@ -94,12 +118,21 @@ local HELP_TEXT = table.concat({
         .. "/karmabook status - can chat alerts work here?"),
 }, "\n\n")
 
--- Index tabs down the right edge. The open tab sticks out further.
+-- Index tabs down the right edge. The open tab sticks out further. Each tab
+-- is as tall as its label plus padding, with a floor so short ones stay
+-- easy to click.
 local TAB_WIDTH = 36
 local TAB_ACTIVE_WIDTH = 46
-local TAB_HEIGHT = 60
+local TAB_MIN_HEIGHT = 40
+local TAB_PAD = 8
 local TAB_TOP = -22
 local TAB_GAP = 4
+
+-- The outer corners are rounded with a quarter-circle piece, and the open
+-- tab gets a gold edge like the cover's
+local TAB_RADIUS = 6
+local TAB_CORNER = "Interface\\AddOns\\Karmabook\\Media\\TabCorner"
+local TAB_ARC = "Interface\\AddOns\\Karmabook\\Media\\TabArc"
 
 -- How far each tab starts underneath the cover
 local TAB_TUCK = 6
@@ -108,16 +141,28 @@ local TAB_TUCK = 6
 -- nudge to land in the center of the tab
 local TAB_TEXT_X, TAB_TEXT_Y = 7, -6
 
+-- Mixes a dye 15% toward the page color, so the tabs read as tinted paper
+-- from the same book rather than paint
+local function Softened(dye)
+    local paper = Theme.PAPER
+    return {
+        dye[1] * 0.85 + paper[1] * 0.15,
+        dye[2] * 0.85 + paper[2] * 0.15,
+        dye[3] * 0.85 + paper[3] * 0.15,
+    }
+end
+
 -- One divider per label, plus All. label is nil on All. The dye matches the
--- label's ink color, lightened so dark text reads on it.
+-- label's ink color, lightened so dark text reads on it. Notes means nothing
+-- by its color, so it takes the Karmabook orchid.
 local TABS = {
-    { text = "All", dye = { 0.86, 0.76, 0.56 } },
-    { text = "Grudges", label = "GRUDGE", dye = { 0.84, 0.58, 0.32 } },
-    { text = "KOS", title = "Kill on Sight", label = "KOS", dye = { 0.80, 0.42, 0.34 } },
-    { text = "Caution", label = "CAUTION", dye = { 0.86, 0.72, 0.34 } },
-    { text = "Good", label = "GOOD", dye = { 0.58, 0.72, 0.44 } },
-    { text = "Guild", title = "From your guild", guild = true, dye = { 0.62, 0.72, 0.86 } },
-    { text = "Notes", title = "Notes", misc = true, dye = { 0.74, 0.68, 0.80 } },
+    { text = "All", dye = Softened({ 0.86, 0.76, 0.56 }) },
+    { text = "Grudges", label = "GRUDGE", dye = Softened({ 0.84, 0.58, 0.32 }) },
+    { text = "KOS", title = "Kill on Sight", label = "KOS", dye = Softened({ 0.80, 0.42, 0.34 }) },
+    { text = "Caution", label = "CAUTION", dye = Softened({ 0.86, 0.72, 0.34 }) },
+    { text = "Good", label = "GOOD", dye = Softened({ 0.58, 0.72, 0.44 }) },
+    { text = "Guild", title = "From your guild", guild = true, dye = Softened({ 0.62, 0.72, 0.86 }) },
+    { text = "Notes", title = "Notes", misc = true, dye = Softened({ 0.88, 0.66, 0.84 }) },
 }
 
 ----------------------------------------------------------------------
@@ -319,17 +364,82 @@ local function CreatePageScroll(parent)
     return scroll, content
 end
 
--- A thin line along one edge of a tab, for light on top and shadow below
-local function AddTabEdge(tab, point1, point2, horizontal, r, g, b, a)
-    local edge = tab:CreateTexture(nil, "BORDER")
-    edge:SetPoint(point1)
-    edge:SetPoint(point2)
-    if horizontal then
-        edge:SetHeight(1)
+-- One of the tab's two outer corners, RADIUS square. The art rounds a
+-- top-right corner; the bottom one is the same art flipped.
+local function AddTabCornerPiece(tab, layer, sublevel, file, bottom)
+    local piece = tab:CreateTexture(nil, layer, nil, sublevel)
+    piece:SetTexture(file)
+    piece:SetSize(TAB_RADIUS, TAB_RADIUS)
+    if bottom then
+        piece:SetPoint("BOTTOMRIGHT")
+        piece:SetTexCoord(0, 1, 1, 0)
     else
-        edge:SetWidth(1)
+        piece:SetPoint("TOPRIGHT")
     end
-    edge:SetColorTexture(r, g, b, a)
+    return piece
+end
+
+-- Fills the tab with one color, rounding its outer corners. The pieces
+-- don't overlap, so a see-through color stays even. Returns them, so they
+-- can be shown and hidden together.
+local function AddRoundedFill(tab, layer, sublevel, r, g, b, a)
+    local main = tab:CreateTexture(nil, layer, nil, sublevel)
+    main:SetPoint("TOPLEFT")
+    main:SetPoint("BOTTOMRIGHT", -TAB_RADIUS, 0)
+    main:SetColorTexture(r, g, b, a)
+
+    local column = tab:CreateTexture(nil, layer, nil, sublevel)
+    column:SetPoint("TOPRIGHT", 0, -TAB_RADIUS)
+    column:SetPoint("BOTTOMRIGHT", 0, TAB_RADIUS)
+    column:SetWidth(TAB_RADIUS)
+    column:SetColorTexture(r, g, b, a)
+
+    local top = AddTabCornerPiece(tab, layer, sublevel, TAB_CORNER, false)
+    local bottom = AddTabCornerPiece(tab, layer, sublevel, TAB_CORNER, true)
+    top:SetVertexColor(r, g, b, a)
+    bottom:SetVertexColor(r, g, b, a)
+    return { main, column, top, bottom }
+end
+
+-- A one-pixel line around the tab's outer edges, following the rounded
+-- corners. Used for light, shadow, and the open tab's gold.
+local function AddRoundedEdge(tab, sublevel, r, g, b, a, sides)
+    local pieces = {}
+    local function Line(point1, x1, y1, point2, x2, y2, horizontal)
+        local line = tab:CreateTexture(nil, "BORDER", nil, sublevel)
+        line:SetPoint(point1, x1, y1)
+        line:SetPoint(point2, x2, y2)
+        if horizontal then
+            line:SetHeight(1)
+        else
+            line:SetWidth(1)
+        end
+        line:SetColorTexture(r, g, b, a)
+        pieces[#pieces + 1] = line
+    end
+    local function Arc(bottom)
+        local arc = AddTabCornerPiece(tab, "BORDER", sublevel, TAB_ARC, bottom)
+        arc:SetVertexColor(r, g, b, a)
+        pieces[#pieces + 1] = arc
+    end
+    if sides.top then
+        Line("TOPLEFT", 0, 0, "TOPRIGHT", -TAB_RADIUS, 0, true)
+        Arc(false)
+    end
+    if sides.right then
+        Line("TOPRIGHT", 0, -TAB_RADIUS, "BOTTOMRIGHT", 0, TAB_RADIUS, false)
+    end
+    if sides.bottom then
+        Line("BOTTOMLEFT", 0, 0, "BOTTOMRIGHT", -TAB_RADIUS, 0, true)
+        Arc(true)
+    end
+    return pieces
+end
+
+local function SetPiecesShown(pieces, shown)
+    for _, piece in ipairs(pieces) do
+        piece:SetShown(shown)
+    end
 end
 
 -- The shadow the cover casts on the tab where it comes out
@@ -342,30 +452,34 @@ local function AddTabCoverShadow(tab)
     shadow:SetGradient("HORIZONTAL", CreateColor(0, 0, 0, 0.5), CreateColor(0, 0, 0, 0))
 end
 
-local function CreateIndexTab(frame, info, index)
+local function CreateIndexTab(frame, info, previous)
     local tab = CreateFrame("Button", nil, frame)
     tab.info = info
-    tab:SetSize(TAB_WIDTH, TAB_HEIGHT)
-    tab:SetPoint("TOPLEFT", frame, "TOPRIGHT", -TAB_TUCK, TAB_TOP - (index - 1) * (TAB_HEIGHT + TAB_GAP))
+    tab:SetSize(TAB_WIDTH, TAB_MIN_HEIGHT)
+    if previous then
+        tab:SetPoint("TOPLEFT", previous, "BOTTOMLEFT", 0, -TAB_GAP)
+    else
+        tab:SetPoint("TOPLEFT", frame, "TOPRIGHT", -TAB_TUCK, TAB_TOP)
+    end
 
     -- Below the book, so the tab comes out from behind the cover
     tab:SetFrameLevel(frame:GetFrameLevel() - 1)
 
-    Theme.AddDyedPaper(tab, info.dye)
-    AddTabEdge(tab, "TOPLEFT", "TOPRIGHT", true, 1, 1, 1, 0.3)
-    AddTabEdge(tab, "BOTTOMLEFT", "BOTTOMRIGHT", true, 0.1, 0.05, 0.02, 0.55)
-    AddTabEdge(tab, "TOPRIGHT", "BOTTOMRIGHT", false, 0.1, 0.05, 0.02, 0.55)
+    local r, g, b = Theme.Color(info.dye)
+    AddRoundedFill(tab, "BACKGROUND", 0, r, g, b, 1)
+    AddRoundedEdge(tab, 0, 1, 1, 1, 0.3, { top = true })
+    AddRoundedEdge(tab, 0, 0.1, 0.05, 0.02, 0.55, { right = true, bottom = true })
     AddTabCoverShadow(tab)
+
+    -- The open tab's gold edge, the same gold as the cover's trim
+    local gr, gg, gb, ga = Theme.Color(Theme.GOLD_LIGHT)
+    tab.trim = AddRoundedEdge(tab, 1, gr, gg, gb, ga, { top = true, right = true, bottom = true })
 
     -- Closed tabs sit in the shade of the open one, in brown rather than
     -- black so the dye doesn't turn gray
-    tab.shade = tab:CreateTexture(nil, "ARTWORK")
-    tab.shade:SetAllPoints()
-    tab.shade:SetColorTexture(Theme.Color(Theme.LEATHER, 0.3))
+    tab.shade = AddRoundedFill(tab, "ARTWORK", 0, Theme.Color(Theme.LEATHER, 0.3))
 
-    local highlight = tab:CreateTexture(nil, "HIGHLIGHT")
-    highlight:SetAllPoints()
-    highlight:SetColorTexture(Theme.Color(Theme.INK, 0.1))
+    AddRoundedFill(tab, "HIGHLIGHT", 0, Theme.Color(Theme.INK, 0.1))
 
     -- Reads top to bottom, like the label on a divider
     local label = tab:CreateFontString(nil, "OVERLAY")
@@ -708,10 +822,43 @@ local function CreateHelpPage(frame)
     about:SetPoint("BOTTOMLEFT")
 end
 
+-- Comes over the top edge of the cover, runs down the paper, and ends in a
+-- notched tail over the bottom edge of the cover. It stays in the gap between
+-- the fold and the red margin, so it never covers writing.
+local function AddRibbon(frame)
+    -- One ribbon shape: body then notched tail. The tail art's top is a plain
+    -- shaded strip, so the body reuses it.
+    local function Shape(x, y, sublevel, r, g, b, a)
+        local body = frame:CreateTexture(nil, "ARTWORK", nil, sublevel)
+        body:SetTexture(RIBBON_TAIL)
+        body:SetTexCoord(0, 1, 0, 0.1)
+        body:SetVertexColor(r, g, b, a)
+        body:SetSize(RIBBON_WIDTH, RIBBON_LENGTH)
+        body:SetPoint("TOPLEFT", x, y)
+
+        local tail = frame:CreateTexture(nil, "ARTWORK", nil, sublevel)
+        tail:SetTexture(RIBBON_TAIL)
+        tail:SetVertexColor(r, g, b, a)
+        tail:SetSize(RIBBON_WIDTH, RIBBON_TAIL_LENGTH)
+        tail:SetPoint("TOP", body, "BOTTOM")
+    end
+
+    local x = WIDTH / 2 + 10
+    -- A soft shadow just right of and below the ribbon, so it lies on the paper
+    Shape(x + RIBBON_SHADOW, -RIBBON_SHADOW / 2, -3, 0, 0, 0, 0.18)
+    Shape(x + RIBBON_SHADOW / 2, -RIBBON_SHADOW / 4, -2, 0, 0, 0, 0.22)
+    Shape(x, 0, -1, Theme.Color(RIBBON))
+end
+
 local function CreateFrames()
     local frame = Theme.CreateWindow("KarmabookWindow", WIDTH, HEIGHT, true)
     frame:SetFrameLevel(10)
     frame.title:SetPoint("TOP", frame, "TOPLEFT", (WIDTH / 2 + LIST_LEFT) / 2, -24)
+
+    frame.initial = frame:CreateTexture(nil, "OVERLAY")
+    frame.initial:SetSize(INITIAL_SIZE, INITIAL_SIZE)
+    frame.initial:SetPoint("RIGHT", frame.title, "LEFT", -1, 1)
+    frame.initial:SetTexture(INITIAL)
     frame.rows = {}
 
     Theme.AddMargin(frame, LIST_LEFT - 6)
@@ -719,7 +866,7 @@ local function CreateFrames()
 
     frame.tabs = {}
     for index, info in ipairs(TABS) do
-        frame.tabs[index] = CreateIndexTab(frame, info, index)
+        frame.tabs[index] = CreateIndexTab(frame, info, frame.tabs[index - 1])
     end
     frame.activeTab = frame.tabs[1]
 
@@ -728,14 +875,14 @@ local function CreateFrames()
     searchLabel:SetPoint("TOPLEFT", LIST_LEFT, -66)
     searchLabel:SetText("Search")
 
-    local search = Theme.CreateInput(frame, 130, 50)
+    local search = Theme.CreateInput(frame, 120, 50)
     search:SetPoint("LEFT", searchLabel, "RIGHT", 6, 0)
     search:SetScript("OnTextChanged", function()
         Window:Refresh()
     end)
     frame.search = search
 
-    local newPage = Theme.CreateButton(frame, "New page", 80, function()
+    local newPage = Theme.CreateButton(frame, "+ New page", 92, function()
         if frame.activeTab.info.misc then
             Window:OpenMisc(nil)
         else
@@ -759,6 +906,15 @@ local function CreateFrames()
     frame.empty:SetWidth(PAGE_WIDTH)
     frame.empty:SetJustifyH("LEFT")
 
+    -- Centered in the space under the hint text
+    frame.stamp = frame:CreateTexture(nil, "ARTWORK")
+    frame.stamp:SetSize(STAMP_SIZE, STAMP_SIZE)
+    frame.stamp:SetPoint("CENTER", frame, "TOPLEFT", PAGE_LEFT + PAGE_WIDTH / 2, -(HEIGHT / 2) - 40)
+    frame.stamp:SetTexture(STAMP)
+    frame.stamp:SetAlpha(STAMP_ALPHA)
+
+    AddRibbon(frame)
+
     CreateRightPage(frame)
     CreateHelpPage(frame)
     CreateIncomingPage(frame)
@@ -773,7 +929,7 @@ local function CreateFrames()
         end
         Window:Refresh()
     end)
-    checkOnline:SetPoint("BOTTOMLEFT", LIST_LEFT, 6)
+    checkOnline:SetPoint("BOTTOMLEFT", LIST_LEFT, FOOTER_Y)
     checkOnline:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
         GameTooltip:SetText("Check online")
@@ -798,7 +954,7 @@ local function CreateFrames()
     end)
     helpButton:SetNormalFontObject(Theme.FONT_HEADING)
     helpButton:SetHighlightFontObject(Theme.FONT_HEADING)
-    helpButton:SetPoint("BOTTOMLEFT", 13, 13)
+    helpButton:SetPoint("BOTTOMLEFT", 13, FOOTER_Y)
     frame.helpButton = helpButton
 
     frame:SetScript("OnShow", function()
@@ -825,6 +981,7 @@ local function RefreshRightPage(frame)
     frame.miscPage:SetShown(miscOpen == true)
     details:SetShown(record ~= nil and not frame.showHelp and not entry and not miscOpen)
     frame.empty:SetShown(record == nil and not frame.showHelp and not entry and not miscOpen)
+    frame.stamp:SetShown(frame.empty:IsShown())
     frame.empty:SetText(tabInfo.guild and GUILD_HINT or tabInfo.misc and MISC_HINT or EMPTY_HINT)
     if miscOpen then
         local note = frame.miscNote
@@ -882,11 +1039,24 @@ local function RefreshTabs(frame)
     for _, tab in ipairs(frame.tabs) do
         local active = tab == frame.activeTab
         tab:SetWidth(active and TAB_ACTIVE_WIDTH or TAB_WIDTH)
-        tab.shade:SetShown(not active)
+        SetPiecesShown(tab.shade, not active)
+        SetPiecesShown(tab.trim, active)
         if tab.info.guild then
             local count = GB.Share:Count()
             tab.label:SetText(count > 0 and ("Guild " .. count) or "Guild")
         end
+    end
+
+    -- Size each tab to its label. If a long translation or a big guild count
+    -- would push the last tab past the book, the padding shrinks to fit.
+    local room = HEIGHT + TAB_TOP - Theme.COVER - (#frame.tabs - 1) * TAB_GAP
+    local labels = 0
+    for _, tab in ipairs(frame.tabs) do
+        labels = labels + tab.label:GetStringWidth()
+    end
+    local pad = math.max(2, math.min(TAB_PAD, (room - labels) / (2 * #frame.tabs)))
+    for _, tab in ipairs(frame.tabs) do
+        tab:SetHeight(math.max(TAB_MIN_HEIGHT, tab.label:GetStringWidth() + 2 * pad))
     end
 end
 
@@ -897,7 +1067,12 @@ function Window:Refresh()
     end
 
     local tabInfo = frame.activeTab.info
-    frame.title:SetText(tabInfo.title or (tabInfo.label and tabInfo.text) or "Karmabook")
+    local heading = tabInfo.title or (tabInfo.label and tabInfo.text)
+    -- Shift the text right by half the badge so the pair stays centered
+    local shift = heading and 0 or (INITIAL_SIZE + 1) / 2
+    frame.title:SetPoint("TOP", frame, "TOPLEFT", (WIDTH / 2 + LIST_LEFT) / 2 + shift, -24)
+    frame.title:SetText(heading or "armabook")
+    frame.initial:SetShown(heading == nil)
     RefreshTabs(frame)
 
     frame.checkOnline:SetShown(not tabInfo.misc)

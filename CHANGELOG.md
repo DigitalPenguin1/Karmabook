@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- New Karmabook mark: a K with the yin-yang's two dots tucked in its crooks. It's the minimap button, the icon in the addon list, and the K of the book's title
+- The empty right page shows the mark faintly, like a stamp
+- A purple bookmark ribbon runs down the right page
+- Index tabs have rounded corners and fit their label, and the open tab has a gold edge. Their colors are softer, and Notes is orchid
+- Ruled lines no longer draw some lines thick and skip others at some UI scales
+- Check online and the help button sit clear of the page's bottom edge
+- New page reads "+ New page", and the close button uses the title's lettering
+- New CurseForge logo and banner with the new mark
+
 ## 0.3.1
 
 - Players in your group no longer alert for party chat or showing up nearby, whatever their label. Before, only Good Players went quiet
