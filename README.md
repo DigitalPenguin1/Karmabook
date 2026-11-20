@@ -4,7 +4,9 @@
   <img src="Art/description-banner.webp" alt="Karmabook: I Will Always Remember You" width="640">
 </p>
 
-Private notes on players for WoW: Forever. Add someone once, and the next time they talk in guild chat, whisper you, or walk past, you get a sound and a banner with your note on what they did.
+**The rogue who took your herb and laughed. The healer who carried your dungeon. Write them both down.**
+
+Karmabook is a private notebook on players in WoW: Forever: the ones to watch out for, and the ones worth grouping with again. Add someone once, and the next time they talk in guild chat, whisper you, or walk past, you get a sound and a banner with your note, so you never forget who they were or what they did.
 
 Nothing is sent to anyone unless you pick **Share** on a page: **Guild** sends it quietly to guildmates who have Karmabook, and **Say** posts it in chat for everyone nearby. It never whispers anyone, and only lists people you add yourself. The Notes tab holds plain notes that aren't about anyone.
 
@@ -14,7 +16,15 @@ Nothing is sent to anyone unless you pick **Share** on a page: **Guild** sends i
 - Target them and type `/karmabook add`
 - Type `/karmabook add First Surname: took my herb and laughed`
 
-Each page gets a label (Grudge, Kill on Sight, Caution, or Good Player), race and class, where you saw them, and dated notes. The tabs on the right of the book show one label at a time.
+Each page gets a label (Grudge, Kill on Sight, Caution, or Good Player), race, class, level, faction, where you saw them, and dated notes. The tabs on the right of the book show one label at a time.
+
+## In the book
+
+- A dot by each name shows if they're online: green online, red offline, faint unknown. Your guild roster, friends list, group, and recent sightings keep it current.
+- **Check online** under the list runs `/who` on the next name you haven't accounted for, one per press. The other faction is skipped, since `/who` can't see them.
+- Alliance and Horde crests show next to names once their faction is known.
+- Right-click a name to whisper them, edit their page, or check if they're online.
+- Your latest note shows in their tooltip when you mouse over them. Turn it off with **Show notes in tooltips** in settings.
 
 A colored **!** before a name in chat means that player is in your book, in their label's color. Turn it off with **Mark names in chat** in settings. Anyone in your group stays quiet after the one alert when they join. Good Players don't alert when they invite you or join.
 
