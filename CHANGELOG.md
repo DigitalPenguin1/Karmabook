@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.2
 
 - New Karmabook mark: a K with the yin-yang's two dots tucked in its crooks. It's the minimap button, the icon in the addon list, and the K of the book's title
 - The empty right page shows the mark faintly, like a stamp
